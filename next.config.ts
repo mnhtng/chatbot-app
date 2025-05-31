@@ -12,6 +12,16 @@ const nextConfig: NextConfig = {
       'cdn.discordapp.com',
       'cdn.pixabay.com',
     ],
+    remotePatterns: [
+      new URL('https://lh3.googleusercontent.com/**'),
+      new URL('https://avatars.githubusercontent.com/**'),
+      new URL('https://github.com'),
+      new URL('https://www.gravatar.com/**'),
+      new URL('https://images.unsplash.com/**'),
+      new URL('https://cdn.discordapp.com/**'),
+      new URL('https://cdn.pixabay.com/**'),
+      new URL('https://cdn.cloudflare.steamstatic.com/**'),
+    ]
   },
 };
 

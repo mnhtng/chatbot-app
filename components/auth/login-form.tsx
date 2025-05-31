@@ -16,7 +16,7 @@ import { useEffect, useState } from "react"
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert"
 import { AlertCircle, Eye, EyeClosed, X } from "lucide-react"
 import { Validation } from "@/app/page"
-import { loginWithCredentials, loginWithGithub, loginWithGoogle } from "@/app/api/auth/auth"
+import { loginWithCredentials, loginWithGithub, loginWithGoogle } from "@/app/api/auth"
 import { AutoCloseAlert } from "@/utils/alertUtil"
 import { GitHub, Google } from "@/components/icon/brand"
 import { LoadingSpin } from "@/components/icon/animate"
@@ -94,8 +94,8 @@ const LoginForm = ({
 
     useEffect(() => {
         const submitForm = (e: KeyboardEvent) => {
-            if (e.key === 'Enter') {
-                const submitBtn = document.querySelector('form#login button[type="submit"]') as HTMLButtonElement
+            if (e.key === 'Enter' && e.target instanceof HTMLInputElement && e.target.form?.id === 'login') {
+                const submitBtn = document.querySelector('form#login button[name="credentials"]') as HTMLButtonElement
 
                 if (submitBtn) {
                     submitBtn.click()
@@ -357,6 +357,8 @@ const LoginForm = ({
 
                                 <Button
                                     type="submit"
+                                    name="credentials"
+                                    value="credentials"
                                     className="w-full"
                                     disabled={validation.loading}
                                 >

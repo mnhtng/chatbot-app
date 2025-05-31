@@ -10,7 +10,7 @@ import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { AlertCircle, Eye, EyeClosed, X } from "lucide-react";
 import { PasswordVisibleProps } from "./login-form";
 import { Validation } from "@/app/page";
-import { loginWithCredentials, loginWithGithub, loginWithGoogle } from "@/app/api/auth/auth";
+import { loginWithCredentials, loginWithGithub, loginWithGoogle } from "@/app/api/auth";
 import { AutoCloseAlert } from "@/utils/alertUtil";
 import { GitHub, Google } from "@/components/icon/brand"
 import { LoadingSpin } from "@/components/icon/animate";
@@ -83,8 +83,8 @@ const RegisterForm = ({
 
     useEffect(() => {
         const submitForm = (e: KeyboardEvent) => {
-            if (e.key === 'Enter') {
-                const submitBtn = document.querySelector('form#register button[type="submit"]') as HTMLButtonElement
+            if (e.key === 'Enter' && e.target instanceof HTMLInputElement && e.target.form?.id === 'register') {
+                const submitBtn = document.querySelector('form#register button[name="credentials"]') as HTMLButtonElement | null
 
                 if (submitBtn) {
                     submitBtn.click()
@@ -230,7 +230,7 @@ const RegisterForm = ({
             return
         }
 
-        const user = await fetch('/api/auth/signup', {
+        const user = await fetch('/api/signup', {
             method: 'POST',
             body: JSON.stringify({ name, email, password }),
         })

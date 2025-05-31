@@ -4,7 +4,7 @@ import Google from "next-auth/providers/google"
 import Github from "next-auth/providers/github"
 import Credentials from "next-auth/providers/credentials"
 import type { Provider } from "next-auth/providers"
-import { getUserFromDb } from "@/app/api/auth/auth"
+import { getUserFromDb } from "@/app/api/auth"
 import db from "@/_lib/prisma";
 import { loginSchema } from '@/_lib/schema';
 import { createUserConversation } from '@/services/userService';

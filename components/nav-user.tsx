@@ -24,7 +24,7 @@ import {
     SidebarMenuItem,
     useSidebar,
 } from "@/components/ui/sidebar"
-import { logout } from "@/app/api/auth/auth"
+import { logout } from "@/app/api/auth"
 import { useSession } from "next-auth/react"
 import Image from "next/image"
 import { Switch } from "@/components/ui/switch"

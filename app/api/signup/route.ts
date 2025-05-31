@@ -11,8 +11,10 @@ export async function POST(request: Request) {
     if (!validatedCredentials.success) {
         return NextResponse.json({
             error: validatedCredentials.error.format(),
-            status: 422
-        });
+        }, {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+        })
     }
 
     const userEmail = validatedCredentials.data.email.trim().toLocaleLowerCase();
@@ -24,8 +26,10 @@ export async function POST(request: Request) {
         if (existingUser) {
             return NextResponse.json({
                 error: 'User already exists',
-                status: 409
-            });
+            }, {
+                status: 409,
+                headers: { 'Content-Type': 'application/json' }
+            })
         }
 
         const user = await signup({
@@ -37,20 +41,26 @@ export async function POST(request: Request) {
         if (!user) {
             return NextResponse.json({
                 error: 'Failed to create user',
-                status: 404
-            });
+            }, {
+                status: 500,
+                headers: { 'Content-Type': 'application/json' }
+            })
         }
 
         return NextResponse.json({
             user,
-            status: 201
-        });
+        }, {
+            status: 201,
+            headers: { 'Content-Type': 'application/json' }
+        })
     } catch (error) {
         console.error('Error:', error);
 
         return NextResponse.json({
             error: error instanceof Error ? error.message : 'An unknown error occurred',
-            status: 500
-        });
+        }, {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+        })
     }
 }
