@@ -32,21 +32,23 @@ const providers: Provider[] = [
             return await getUserFromDb(email, password)
         },
     }),
-    Google({
-        clientId: process.env.GOOGLE_CLIENT_ID || "",
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-        authorization: {
-            params: {
-                prompt: "consent",
-                access_type: "offline",
-                response_type: "code",
-            },
-        },
-    }),
-    Github({
-        clientId: process.env.AUTH_GITHUB_ID || "",
-        clientSecret: process.env.AUTH_GITHUB_SECRET || "",
-    }),
+    Google,
+    Github,
+    // Google({
+    //     clientId: process.env.AUTH_GOOGLE_ID || "",
+    //     clientSecret: process.env.AUTH_GOOGLE_SECRET || "",
+    //     authorization: {
+    //         params: {
+    //             prompt: "consent",
+    //             access_type: "offline",
+    //             response_type: "code",
+    //         },
+    //     },
+    // }),
+    // Github({
+    //     clientId: process.env.AUTH_GITHUB_ID || "",
+    //     clientSecret: process.env.AUTH_GITHUB_SECRET || "",
+    // }),
 ]
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
@@ -112,4 +114,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // },
     },
     trustHost: true,
+    cookies: {
+        sessionToken: {
+            name: `__Secure-next-auth.session-token`,
+            options: {
+                httpOnly: true,
+                sameSite: "none",
+                path: "/",
+                secure: true,
+            }
+        }
+    }
 })
