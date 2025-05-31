@@ -1,50 +1,7 @@
+import { IntentKeywords } from "@/app/page";
 import { getChatbotResponse, saveChatbotMessage } from "@/services/chatService";
 import { normalizeString } from "@/utils/normalization";
 import { NextResponse } from "next/server";
-
-export const IntentKeywords = [
-    "hello",
-    "hi",
-    "greeting",
-    "welcome",
-    "thanks",
-    "thank you",
-    "bye",
-    "goodbye",
-    "help me",
-    "excuse me",
-    "can you help",
-    "help",
-    "support",
-    "question",
-    "issue",
-    "problem",
-    "inquiry",
-    "request",
-    "assist",
-    "information",
-    "feedback",
-    "xin chao",
-    "chao ban",
-    "cam on",
-    "cam on ban",
-    "tam biet",
-    "tam biet ban",
-    "giup toi",
-    "xin loi",
-    "xin loi ban",
-    "co the giup toi",
-    "giup do",
-    "ho tro",
-    "cau hoi",
-    "van de",
-    "su co",
-    "yeu cau",
-    "hoi dap",
-    "thong tin",
-    "phan hoi",
-    "tro giup",
-]
 
 export async function POST(request: Request) {
     const body = await request.json()

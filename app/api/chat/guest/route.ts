@@ -1,8 +1,8 @@
 import { getChatbotResponse } from "@/services/chatService";
 import { marked } from "marked";
 import { NextResponse } from "next/server";
-import { IntentKeywords } from "@/app/api/chat/chatbot/route";
 import { normalizeString } from "@/utils/normalization";
+import { IntentKeywords } from "@/app/page";
 
 export async function POST(request: Request) {
     const body = await request.json()
