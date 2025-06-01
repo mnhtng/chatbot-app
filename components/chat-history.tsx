@@ -40,6 +40,11 @@ import { Input } from "@/components/ui/input"
 import { Button } from "./ui/button"
 import { AutoCloseAlert } from "@/utils/alertUtil"
 
+interface ActionProps {
+    action: string | null
+    isLoading: boolean
+}
+
 export function ChatHistory() {
     const { isMobile } = useSidebar()
     const { data: session } = useSession()
@@ -47,7 +52,10 @@ export function ChatHistory() {
     const { getUserInboxes, renameChat, deleteChat } = useInbox()
 
     const [userInboxes, setUserInboxes] = useState([])
-    const [inboxAction, setInboxAction] = useState<string | null>(null)
+    const [inboxAction, setInboxAction] = useState<ActionProps>({
+        action: null,
+        isLoading: false
+    })
 
     const fetchInboxes = async () => {
         if (session?.user.conversation) {
@@ -79,7 +87,10 @@ export function ChatHistory() {
     }, [session, state, inbox])
 
     const onRenameMode = (inboxId: string) => {
-        setInboxAction(inboxId)
+        setInboxAction({
+            action: inboxId,
+            isLoading: false
+        })
     }
 
     const handleRenameChat = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -92,7 +103,10 @@ export function ChatHistory() {
             AutoCloseAlert({
                 onStart: () => {
                     setError("Chat name cannot be empty")
-                    setInboxAction(null)
+                    setInboxAction({
+                        action: null,
+                        isLoading: false
+                    })
                 },
                 onClose: () => {
                     setError(null)
@@ -102,10 +116,13 @@ export function ChatHistory() {
         }
 
         try {
-            setInboxAction(null)
+            setInboxAction({
+                action: inboxAction.action,
+                isLoading: true
+            })
 
             const res = await renameChat({
-                inboxId: inboxAction as string,
+                inboxId: inboxAction.action as string,
                 newName: newName.trim(),
             })
 
@@ -140,6 +157,11 @@ export function ChatHistory() {
                     setError(null)
                 }
             })
+        } finally {
+            setInboxAction({
+                action: null,
+                isLoading: false
+            })
         }
     }
 
@@ -150,6 +172,11 @@ export function ChatHistory() {
         const inboxId = formData.get("chatId") as string
 
         try {
+            setInboxAction({
+                action: null,
+                isLoading: true
+            })
+
             const res = await deleteChat(inboxId)
 
             if (res?.error) {
@@ -184,6 +211,11 @@ export function ChatHistory() {
                     setError(null)
                 }
             })
+        } finally {
+            setInboxAction({
+                action: null,
+                isLoading: false
+            })
         }
     }
 
@@ -199,7 +231,7 @@ export function ChatHistory() {
                         key={ib.id}
                         onClick={() => setChatState({ state: "idle", inbox: ib.id })}
                     >
-                        {inboxAction === ib.id ? (
+                        {inboxAction.action === ib.id ? (
                             <form onSubmit={handleRenameChat}>
                                 <div className="flex items-center gap-2 px-2">
                                     <Input
@@ -207,14 +239,18 @@ export function ChatHistory() {
                                         name="chatName"
                                         defaultValue={ib.name}
                                         className="flex-1 bg-sidebar-background text-sidebar-foreground/90 text-sm font-medium px-2 py-1 rounded-lg focus:outline-none focus:ring-2 focus:ring-sidebar-accent"
+                                        disabled={inboxAction.isLoading}
                                         required
                                     />
-                                    <button
+                                    <Button
+                                        variant={"ghost"}
                                         type="submit"
                                         className="text-sidebar-accent hover:text-sidebar-accent-hover"
+                                        disabled={inboxAction.isLoading}
+                                        aria-label="Save chat name"
                                     >
                                         <Check className="text-emerald-500 hover:text-emerald-700" />
-                                    </button>
+                                    </Button>
                                 </div>
                             </form>
                         ) : (
@@ -273,7 +309,11 @@ export function ChatHistory() {
                                                 <form onSubmit={handleDeleteChat}>
                                                     <DialogFooter className="sm:justify-end">
                                                         <DialogClose asChild>
-                                                            <Button type="button" variant="secondary">
+                                                            <Button
+                                                                type="button"
+                                                                variant="secondary"
+                                                                disabled={inboxAction.isLoading}
+                                                            >
                                                                 Cancel
                                                             </Button>
                                                         </DialogClose>
@@ -288,6 +328,7 @@ export function ChatHistory() {
                                                             type="submit"
                                                             variant="destructive"
                                                             className="ml-2"
+                                                            disabled={inboxAction.isLoading}
                                                         >
                                                             Delete
                                                         </Button>

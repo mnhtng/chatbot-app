@@ -17,3 +17,8 @@
 
 - Biến dùng ở phía Client(trong component React)/Server phải bắt đầu bằng `NEXT_PUBLIC_`
 - Biến chỉ dùng ở phía Server không cần bắt đầu bằng `NEXT_PUBLIC_`
+
+# Lưu ý khi deploy
+
+- 1. Public access network
+- 2. Cấu hình callbackURL và authURL + config auth2
