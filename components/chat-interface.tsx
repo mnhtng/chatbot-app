@@ -180,6 +180,12 @@ const ChatInterface = () => {
             }
 
             //! Authenticated user
+            setConversation((prev) => ({
+                ...prev,
+                isLoading: true,
+                error: null
+            }))
+
             let newInboxChat;
 
             // Create new chat if inbox is not set
