@@ -11,7 +11,7 @@ export async function POST(request: Request) {
 
         const response = await getChatbotResponse(prompt);
 
-        console.log(">>> Chatbot response:", response);
+        // console.log(">>> Chatbot response:", response);
 
         const save = await saveChatbotMessage({
             prompt,

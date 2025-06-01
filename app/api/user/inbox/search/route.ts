@@ -1,4 +1,5 @@
-import { searchChats } from "@/services/userService";
+import { getInboxes } from "@/services/userService";
+import { normalizeString } from "@/utils/normalization";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -7,7 +8,11 @@ export async function POST(request: Request) {
     try {
         const { query, conversationId } = body;
 
-        const inboxes = await searchChats({ query, conversationId });
+        const getUserInboxes = await getInboxes(conversationId)
+
+        const inboxes = getUserInboxes.filter((inbox) => {
+            return normalizeString(inbox.name).includes(normalizeString(query))
+        })
 
         return NextResponse.json({
             results: inboxes || []

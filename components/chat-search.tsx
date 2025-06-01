@@ -95,13 +95,10 @@ export function ChatSearch() {
         }))
     }, [searchChats, session?.user?.conversation, setError])
 
-    const debouncedSearch = useMemo(
-        () => debounce(async (value: string) => {
-            await handleSearch(value);
-        }, 500),
+    const debouncedSearch = useMemo(() => debounce(async (value: string) => {
+        await handleSearch(value);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [session?.user?.conversation]
-    );
+    }, 500), [session?.user?.conversation])
 
     const handleRedirectAndCloseSearch = (chatId: string) => {
         const escapeEvent = new KeyboardEvent("keydown", {

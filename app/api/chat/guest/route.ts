@@ -12,7 +12,7 @@ export async function POST(request: Request) {
 
         const response = await getChatbotResponse(prompt);
 
-        console.log(">>> Chatbot response:", response);
+        // console.log(">>> Chatbot response:", response);
 
         return NextResponse.json({
             message: "Message saved successfully!",
