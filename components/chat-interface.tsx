@@ -180,6 +180,12 @@ const ChatInterface = () => {
             }
 
             //! Authenticated user
+            setConversation((prev) => ({
+                ...prev,
+                isLoading: true,
+                error: null
+            }))
+
             let newInboxChat;
 
             // Create new chat if inbox is not set
@@ -465,7 +471,8 @@ const ChatInterface = () => {
                             </div>
                         </div>
                     ))}
-                    {inputPrompt && session?.user && (
+
+                    {inputPrompt && session?.user ? (
                         <>
                             <div className="flex justify-end">
                                 <div className="flex gap-3 max-w-[80%] flex-row-reverse">
@@ -515,7 +522,27 @@ const ChatInterface = () => {
                                 </div>
                             </div>
                         </>
+                    ) : (!session && guestConversation.messages.length > 0 && guestConversation.isLoading) && (
+                        <div className="flex justify-start">
+                            <div className="flex gap-3 max-w-[80%]">
+                                <Avatar className="h-8 w-8">
+                                    <Image
+                                        src="/avatar/chatbot.png"
+                                        alt="Chatbot Avatar"
+                                        width={32}
+                                        height={32}
+                                        priority
+                                    />
+                                    <AvatarFallback className="text-foreground">AI</AvatarFallback>
+                                </Avatar>
+
+                                <div className="rounded-lg bg-muted text-foreground p-3">
+                                    <LoadingDots />
+                                </div>
+                            </div>
+                        </div>
                     )}
+
                     <div ref={messagesEndRef} />
                 </div>
             </div>
