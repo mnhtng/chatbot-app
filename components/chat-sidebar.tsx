@@ -10,7 +10,7 @@ import {
     SidebarHeader,
 } from "@/components/ui/sidebar"
 import { ChatSearch } from "@/components/chat-search"
-import { ChatHistory } from "./chat-history"
+import { ChatHistory } from "@/components/chat-history"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     return (

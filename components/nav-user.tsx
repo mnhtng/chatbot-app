@@ -28,7 +28,7 @@ import { logout } from "@/app/api/auth"
 import { useSession } from "next-auth/react"
 import Image from "next/image"
 import { Switch } from "@/components/ui/switch"
-import { useChat } from "@/components/ui/chat"
+import { useChat } from "@/contexts/chatContext"
 // import { getSession } from "next-auth/react"
 // import { useEffect, useState } from "react"
 // import { Session } from "next-auth"
@@ -74,7 +74,7 @@ export function NavUser() {
     return (
         <SidebarMenu>
             <SidebarMenuItem>
-                <DropdownMenu modal={false}>
+                <DropdownMenu modal={isMobile ? true : false}>
                     <DropdownMenuTrigger asChild>
                         <SidebarMenuButton
                             size="lg"
@@ -87,7 +87,10 @@ export function NavUser() {
                                         alt={session?.user?.name || ''}
                                         width={32}
                                         height={32}
-                                        priority
+                                        priority={false}
+                                        quality={80}
+                                        placeholder="blur"
+                                        blurDataURL="/avatar/user.png"
                                     />
                                 ) : (
                                     <AvatarFallback className="rounded-lg">
@@ -120,7 +123,10 @@ export function NavUser() {
                                             alt={session?.user?.name || ''}
                                             width={32}
                                             height={32}
-                                            priority
+                                            priority={false}
+                                            quality={80}
+                                            placeholder="blur"
+                                            blurDataURL="/avatar/user.png"
                                         />
                                     ) : (
                                         <AvatarFallback className="rounded-lg">
@@ -172,11 +178,16 @@ export function NavUser() {
                             />
                         </div>
 
+                        <DropdownMenuSeparator />
+
                         <DropdownMenuItem
+                            className="cursor-pointer"
                             onClick={onLogout}
                         >
-                            <LogOut />
-                            Log out
+                            <LogOut stroke="red" />
+                            <span className="text-red-500">
+                                Log out
+                            </span>
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>

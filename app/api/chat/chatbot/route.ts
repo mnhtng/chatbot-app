@@ -1,7 +1,9 @@
-import { IntentKeywords } from "@/app/page";
 import { getChatbotResponse, saveChatbotMessage } from "@/services/chatService";
+import { IntentKeywords } from "@/utils/intentWords";
 import { normalizeString } from "@/utils/normalization";
 import { NextResponse } from "next/server";
+
+const SCORE_THRESHOLD = 8;
 
 export async function POST(request: Request) {
     const body = await request.json()
@@ -15,7 +17,7 @@ export async function POST(request: Request) {
 
         const save = await saveChatbotMessage({
             prompt,
-            response: typeof response[0] === 'object' && response[0] !== null && (IntentKeywords.some(keyword => normalizeString(prompt).includes(keyword)) || (response[0] as { score: number }).score >= 4)
+            response: typeof response[0] === 'object' && response[0] !== null && (IntentKeywords.some(keyword => normalizeString(prompt).includes(keyword)) || (response[0] as { score: number }).score >= SCORE_THRESHOLD)
                 ? (response[0] as { content: string }).content
                 : "Xin lỗi, tôi hiện không có đủ thông tin để đưa ra câu trả lời chính xác cho yêu cầu của bạn.",
             conversationId,

@@ -2,7 +2,7 @@
 
 import { SquarePen } from 'lucide-react'
 import React from 'react'
-import { useChat } from '@/components/ui/chat'
+import { useChat } from '@/contexts/chatContext'
 
 const NewChatButton = ({
     className = '',

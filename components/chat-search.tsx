@@ -17,14 +17,14 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog"
-import { useChat } from "@/components/ui/chat"
+import { useChat } from "@/contexts/chatContext"
 import { Label } from "@radix-ui/react-label"
 import { useEffect, useState, useCallback, useMemo } from "react"
 import { Separator } from "@/components/ui/separator"
 import { SearchPoster } from "@/components/icon/illustration"
-import debounce from "@/utils/performance/debounce"
+import debounce from "@/utils/performanceUtil/debounce"
 import useInbox from "@/hooks/useInbox"
-import { SearchResultPlaceholder } from "@/components/ui/placeholder"
+import { SearchResultPlaceholder } from "@/components/ui/custom/placeholder"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useSession } from "next-auth/react"
 import NewChatButton from "@/components/new-chat-button"
@@ -117,7 +117,7 @@ export function ChatSearch() {
                 <SidebarMenuItem>
                     {isMobile || open ? (
                         <div className="flex justify-between items-center gap-2 px-2 cursor-pointer">
-                            <Dialog modal={false}>
+                            <Dialog modal={isMobile ? true : false}>
                                 <DialogTrigger asChild>
                                     <div className="relative flex-1">
                                         <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />

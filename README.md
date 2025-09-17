@@ -1,6 +1,6 @@
 # Session
 
-- Client: `const session = await getSession()`
+- Client: `const { data: session } = useSession()`
 - Server: `const session = await auth()`
 
 # Environment variable
@@ -22,3 +22,8 @@
 
 - 1. Public access network
 - 2. Cấu hình callbackURL và authURL + config auth2
+
+# Next note
+
+- `layout.tsx` có thể lồng nhau - không bị ghi đè
+- `template.tsx` reload lại toàn bộ state, props mỗi khi có thay đổi của bất kỳ state, props nào trong web

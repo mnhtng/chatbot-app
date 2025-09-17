@@ -13,8 +13,17 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { useEffect, useState } from "react"
-import { Alert, AlertDescription, AlertTitle } from "../ui/alert"
-import { AlertCircle, Eye, EyeClosed, X } from "lucide-react"
+import {
+    Alert,
+    AlertDescription,
+    AlertTitle
+} from "@/components/ui/alert"
+import {
+    AlertCircle,
+    Eye,
+    EyeClosed,
+    X,
+} from "lucide-react"
 import { Validation } from "@/app/page"
 import { loginWithCredentials, loginWithGithub, loginWithGoogle } from "@/app/api/auth"
 import { AutoCloseAlert } from "@/utils/alertUtil"
@@ -108,7 +117,7 @@ const LoginForm = ({
         return () => {
             document.removeEventListener('keydown', submitForm)
         }
-    })
+    }, [])
 
     const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()

@@ -7,7 +7,7 @@ import type { Provider } from "next-auth/providers"
 import { getUserFromDb } from "@/app/api/auth"
 import db from "@/_lib/prisma";
 import { loginSchema } from '@/_lib/schema';
-import { createUserConversation } from '@/services/userService';
+import { createUserConversation, getUserRole } from '@/services/userService';
 // import { v4 as uuid } from "uuid";
 // import { encode as defaultEncode } from "next-auth/jwt";
 
@@ -74,9 +74,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                     userId: token.id as string,
                 })
 
+                const userRole = await getUserRole(token.id as string)
+
                 session.user.id = token.id as string;
                 session.user.provider = token.provider as string;
                 session.user.conversation = conversation.id;
+                session.user.role = userRole || "user";
             }
 
             // console.log(">>> Session: ", session);

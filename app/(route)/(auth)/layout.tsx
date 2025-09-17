@@ -1,4 +1,4 @@
-import { ChatProvider } from '@/components/ui/chat';
+import { ChatProvider } from '@/contexts/chatContext';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { PropsWithChildren } from 'react';

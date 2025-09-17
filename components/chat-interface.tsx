@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useEffect, useRef, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import useResponse from "@/hooks/useResponse";
-import { useChat } from "@/components/ui/chat";
+import { useChat } from "@/contexts/chatContext";
 import useMessage from "@/hooks/useMessage";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
@@ -221,7 +221,7 @@ const ChatInterface = () => {
             }
 
             const res = await sendMessage({
-                model: model,
+                model,
                 prompt: input,
                 sender: session?.user?.id as string,
                 conversationId: session?.user?.conversation as string,
@@ -247,6 +247,12 @@ const ChatInterface = () => {
                 })
                 return
             }
+
+            // Update latest list chat
+            setChatState({
+                state: "updating",
+                inbox: newInboxChat || inbox || ""
+            })
 
             await fetchMessages(newInboxChat)
         } catch (error) {
@@ -356,7 +362,7 @@ const ChatInterface = () => {
             )}
 
             <div className="flex flex-1 flex-col overflow-auto gap-4 p-4">
-                <div className="mx-auto w-full max-w-2xl space-y-4">
+                <div className="mx-auto w-full max-w-2xl xl:max-w-4xl space-y-4">
                     {(conversation.messages.length === 0 && guestConversation.messages.length === 0 && !inputPrompt) ? (
                         <div className="flex h-[60vh] items-center justify-center text-slate-500 flex-col gap-4">
                             <p className="text-lg font-medium">Start a conversation with our Assistant</p>
@@ -380,7 +386,10 @@ const ChatInterface = () => {
                                                         alt="User Avatar"
                                                         width={32}
                                                         height={32}
-                                                        priority
+                                                        priority={false}
+                                                        quality={80}
+                                                        placeholder="blur"
+                                                        blurDataURL="/avatar/user.png"
                                                     />
                                                 ) : (
                                                     <Image
@@ -388,7 +397,10 @@ const ChatInterface = () => {
                                                         alt="User Avatar"
                                                         width={32}
                                                         height={32}
-                                                        priority
+                                                        priority={false}
+                                                        quality={80}
+                                                        placeholder="blur"
+                                                        blurDataURL="/avatar/user.png"
                                                     />
                                                 )}
                                                 <AvatarFallback className="text-foreground">US</AvatarFallback>
@@ -400,7 +412,10 @@ const ChatInterface = () => {
                                                     alt="Chatbot Avatar"
                                                     width={32}
                                                     height={32}
-                                                    priority
+                                                    priority={false}
+                                                    quality={80}
+                                                    placeholder="blur"
+                                                    blurDataURL="/avatar/chatbot.png"
                                                 />
                                                 <AvatarFallback className="text-foreground">AI</AvatarFallback>
                                             </>
@@ -437,7 +452,10 @@ const ChatInterface = () => {
                                                 alt="User Avatar"
                                                 width={32}
                                                 height={32}
-                                                priority
+                                                priority={false}
+                                                quality={80}
+                                                placeholder="blur"
+                                                blurDataURL="/avatar/user.png"
                                             />
                                             <AvatarFallback className="text-foreground">US</AvatarFallback>
                                         </>
@@ -448,7 +466,10 @@ const ChatInterface = () => {
                                                 alt="Chatbot Avatar"
                                                 width={32}
                                                 height={32}
-                                                priority
+                                                priority={false}
+                                                quality={80}
+                                                placeholder="blur"
+                                                blurDataURL="/avatar/chatbot.png"
                                             />
                                             <AvatarFallback className="text-foreground">AI</AvatarFallback>
                                         </>
@@ -483,7 +504,10 @@ const ChatInterface = () => {
                                                 alt="User Avatar"
                                                 width={32}
                                                 height={32}
-                                                priority
+                                                priority={false}
+                                                quality={80}
+                                                placeholder="blur"
+                                                blurDataURL="/avatar/user.png"
                                             />
                                         ) : (
                                             <Image
@@ -491,7 +515,10 @@ const ChatInterface = () => {
                                                 alt="User Avatar"
                                                 width={32}
                                                 height={32}
-                                                priority
+                                                priority={false}
+                                                quality={80}
+                                                placeholder="blur"
+                                                blurDataURL="/avatar/user.png"
                                             />
                                         )}
                                         <AvatarFallback className="text-foreground">US</AvatarFallback>
@@ -511,7 +538,10 @@ const ChatInterface = () => {
                                             alt="Chatbot Avatar"
                                             width={32}
                                             height={32}
-                                            priority
+                                            priority={false}
+                                            quality={80}
+                                            placeholder="blur"
+                                            blurDataURL="/avatar/chatbot.png"
                                         />
                                         <AvatarFallback className="text-foreground">AI</AvatarFallback>
                                     </Avatar>
@@ -531,7 +561,10 @@ const ChatInterface = () => {
                                         alt="Chatbot Avatar"
                                         width={32}
                                         height={32}
-                                        priority
+                                        priority={false}
+                                        quality={80}
+                                        placeholder="blur"
+                                        blurDataURL="/avatar/chatbot.png"
                                     />
                                     <AvatarFallback className="text-foreground">AI</AvatarFallback>
                                 </Avatar>

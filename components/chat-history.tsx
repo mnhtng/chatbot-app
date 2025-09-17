@@ -34,13 +34,13 @@ import {
 } from "@/components/ui/dialog"
 import { useSession } from "next-auth/react"
 import React, { useEffect, useState } from "react"
-import { useChat } from "@/components/ui/chat"
+import { useChat } from "@/contexts/chatContext"
 import useInbox from "@/hooks/useInbox"
 import { Input } from "@/components/ui/input"
-import { Button } from "./ui/button"
+import { Button } from "@/components/ui/button"
 import { AutoCloseAlert } from "@/utils/alertUtil"
 
-interface ActionProps {
+export interface ActionProps {
     action: string | null
     isLoading: boolean
 }
@@ -56,6 +56,7 @@ export function ChatHistory() {
         action: null,
         isLoading: false
     })
+    const [open, setOpen] = useState("")
 
     const fetchInboxes = async () => {
         if (session?.user.conversation) {
@@ -85,6 +86,18 @@ export function ChatHistory() {
         fetchUserInboxes()
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [session, state, inbox])
+
+    useEffect(() => {
+        if (state === "updating") {
+            fetchInboxes()
+
+            setChatState({
+                state: "idle",
+                inbox: ""
+            })
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [state])
 
     const onRenameMode = (inboxId: string) => {
         setInboxAction({
@@ -256,12 +269,18 @@ export function ChatHistory() {
                         ) : (
                             <SidebarMenuButton
                                 className={`${inbox === ib.id ? "bg-sidebar-border text-sidebar-accent-foreground" : ""} hover:bg-sidebar-border hover:text-sidebar-accent-foreground transition-colors duration-200 rounded-lg justify-between`}
+                                title={ib.name}
+                                aria-label={ib.name}
                             >
                                 <span className="truncate text-sidebar-foreground/90 text-sm font-medium">
                                     {ib.name}
                                 </span>
 
-                                <DropdownMenu modal={false}>
+                                <DropdownMenu
+                                    modal={isMobile ? true : false}
+                                    open={open === ib.id}
+                                    onOpenChange={(open) => { setOpen(open ? ib.id : "") }}
+                                >
                                     <DropdownMenuTrigger asChild>
                                         <MoreHorizontal className="text-sidebar-foreground/70" />
                                     </DropdownMenuTrigger>

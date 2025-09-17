@@ -6,9 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
-import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, Eye, EyeClosed, X } from "lucide-react";
-import { PasswordVisibleProps } from "./login-form";
+import { PasswordVisibleProps } from "@/components/auth/login-form";
 import { Validation } from "@/app/page";
 import { loginWithCredentials, loginWithGithub, loginWithGoogle } from "@/app/api/auth";
 import { AutoCloseAlert } from "@/utils/alertUtil";
@@ -97,7 +97,7 @@ const RegisterForm = ({
         return () => {
             document.removeEventListener('keydown', submitForm)
         }
-    })
+    }, [])
 
     const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()

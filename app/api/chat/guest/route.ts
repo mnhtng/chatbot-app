@@ -2,7 +2,7 @@ import { getChatbotResponse } from "@/services/chatService";
 import { marked } from "marked";
 import { NextResponse } from "next/server";
 import { normalizeString } from "@/utils/normalization";
-import { IntentKeywords } from "@/app/page";
+import { IntentKeywords } from "@/utils/intentWords";
 
 export async function POST(request: Request) {
     const body = await request.json()

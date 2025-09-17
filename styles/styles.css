@@ -4,3 +4,17 @@ li,
 span {
     cursor: pointer;
 }
+
+/* Full-page theme toggle animation */
+::view-transition-old(root),
+::view-transition-new(root) {
+    animation: none;
+    mix-blend-mode: normal;
+}
+
+::selection {
+    background-color: var(--color-teal-400);
+    color: var(--color-teal-950);
+    text-shadow: none;
+    border-radius: 1rem;
+}

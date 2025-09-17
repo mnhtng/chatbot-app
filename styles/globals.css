@@ -4,6 +4,16 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --background-50: oklch(1 0 0 / 50%);
+  --inset-shadow-md: inset 0 2px 3px var(--background-50);
+  --inset-shadow-lg: inset 0 4px 6px var(--background-50);
+  --inset-shadow-xl: inset 0 8px 12px var(--background-50);
+  --inset-shadow-2xl: inset 0 16px 24px var(--background-50);
+  --inset-shadow-3xl: inset 0 24px 36px var(--background-50);
+  --inset-shadow-4xl: inset 0 32px 48px var(--background-50);
+  --inset-shadow-5xl: inset 0 40px 60px var(--background-50);
+  --inset-shadow-6xl: inset 0 48px 72px var(--background-50);
+  --inset-shadow-7xl: inset 0 56px 84px var(--background-50);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
@@ -44,6 +54,15 @@
 }
 
 :root {
+  --inset-shadow-md: inset 0 2px 3px var(--background-50);
+  --inset-shadow-lg: inset 0 4px 6px var(--background-50);
+  --inset-shadow-xl: inset 0 8px 12px var(--background-50);
+  --inset-shadow-2xl: inset 0 16px 24px var(--background-50);
+  --inset-shadow-3xl: inset 0 24px 36px var(--background-50);
+  --inset-shadow-4xl: inset 0 32px 48px var(--background-50);
+  --inset-shadow-5xl: inset 0 40px 60px var(--background-50);
+  --inset-shadow-6xl: inset 0 48px 72px var(--background-50);
+  --inset-shadow-7xl: inset 0 56px 84px var(--background-50);
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -64,11 +83,12 @@
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
+  --chart-1: oklch(0.68 0.26 0);
+  --chart-2: oklch(0.78 0.18 120);
+  --chart-3: oklch(0.62 0.25 210);
+  --chart-4: oklch(0.58 0.22 270);
+  --chart-5: oklch(0.75 0.20 50);
+  --chart-6: oklch(0.70 0.24 320);
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -80,6 +100,16 @@
 }
 
 .dark {
+  --background-50: oklch(0.145 0 0 / 50%);
+  --inset-shadow-md: inset 0 2px 3px var(--background-50);
+  --inset-shadow-lg: inset 0 4px 6px var(--background-50);
+  --inset-shadow-xl: inset 0 8px 12px var(--background-50);
+  --inset-shadow-2xl: inset 0 16px 24px var(--background-50);
+  --inset-shadow-3xl: inset 0 24px 36px var(--background-50);
+  --inset-shadow-4xl: inset 0 32px 48px var(--background-50);
+  --inset-shadow-5xl: inset 0 40px 60px var(--background-50);
+  --inset-shadow-6xl: inset 0 48px 72px var(--background-50);
+  --inset-shadow-7xl: inset 0 56px 84px var(--background-50);
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --revert-color: oklch(0.145 0 0);
@@ -99,11 +129,12 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
+  --chart-1: oklch(0.65 0.15 0);
+  --chart-2: oklch(0.62 0.12 120);
+  --chart-3: oklch(0.58 0.14 210);
+  --chart-4: oklch(0.55 0.13 270);
+  --chart-5: oklch(0.60 0.11 50);
+  --chart-6: oklch(0.57 0.12 320);
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);

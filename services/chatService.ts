@@ -18,7 +18,7 @@ export const saveAiMessage = async ({
     try {
         if (conversationId === null || inboxId === null) return null
 
-        const [messageData, articleData] = await db.$transaction([
+        const [messageData, articleData, inboxUpdate, conversationUpdate] = await db.$transaction([
             db.message.createMany({
                 data: [
                     {
@@ -40,13 +40,23 @@ export const saveAiMessage = async ({
                     title: prompt,
                     content: response,
                 }
+            }),
+            db.inbox.update({
+                where: { id: inboxId },
+                data: { updatedAt: new Date() }
+            }),
+            db.conversation.update({
+                where: { id: conversationId },
+                data: { updatedAt: new Date() }
             })
         ]);
 
         return {
             message: "Message saved successfully!",
             messageData,
-            articleData
+            articleData,
+            inboxUpdate,
+            conversationUpdate
         }
     } catch (error) {
         console.error("Error saving message:", error);
@@ -64,22 +74,38 @@ export const saveChatbotMessage = async ({
     try {
         if (conversationId === null || inboxId === null) return null
 
-        return await db.message.createMany({
-            data: [
-                {
-                    conversationId,
-                    inboxId,
-                    message: prompt,
-                    sender,
-                },
-                {
-                    conversationId,
-                    inboxId,
-                    message: response,
-                    sender: "assistant",
-                }
-            ]
-        })
+        const [messageData, inboxUpdate, conversationUpdate] = await db.$transaction([
+            db.message.createMany({
+                data: [
+                    {
+                        conversationId,
+                        inboxId,
+                        message: prompt,
+                        sender,
+                    },
+                    {
+                        conversationId,
+                        inboxId,
+                        message: response,
+                        sender: "assistant",
+                    }
+                ]
+            }),
+            db.inbox.update({
+                where: { id: inboxId },
+                data: { updatedAt: new Date() }
+            }),
+            db.conversation.update({
+                where: { id: conversationId },
+                data: { updatedAt: new Date() }
+            })
+        ]);
+
+        return {
+            messageData,
+            inboxUpdate,
+            conversationUpdate
+        }
     } catch (error) {
         console.error("Error saving message:", error);
         throw error;
@@ -92,13 +118,17 @@ export const getChatbotResponse = async (prompt: string) => {
             $text: {
                 $search: prompt,
                 $caseSensitive: false,
-                $diacriticSensitive: false
+                $diacriticSensitive: false,
             }
         },
         options: {
-            projection: { content: 1, score: { $meta: "textScore" } },
+            projection: {
+                content: 1,
+                score: { $meta: "textScore" }
+            },
             sort: { score: { $meta: "textScore" } },
             limit: 1,
+            $path: "title",
         }
     })
 }

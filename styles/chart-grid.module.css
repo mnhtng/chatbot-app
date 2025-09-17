@@ -1,0 +1,103 @@
+/* Main grid container */
+.chartGrid {
+    display: grid;
+    grid-template-columns: repeat(1, 1fr);
+    gap: 1.5rem;
+    margin-top: 2.5rem;
+}
+
+@media (min-width: 768px) {
+    .chartGrid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Chart row container - sử dụng để group charts cùng row */
+.chartRow {
+    display: grid;
+    grid-template-columns: repeat(1, 1fr);
+    grid-template-rows:
+        minmax(120px, auto)
+        /* Header row - min 120px */
+        1fr
+        /* Content row - flexible */
+        auto;
+    /* Footer row - auto height */
+    gap: 1.5rem;
+    grid-column: 1 / -1;
+    /* Span full width */
+}
+
+@media (min-width: 768px) {
+    .chartRow {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Individual chart wrapper */
+.chartWrapper {
+    display: contents;
+    /* Cho phép children participate trực tiếp trong grid */
+}
+
+/* Chart card styling */
+.chartCard {
+    display: grid !important;
+    grid-template-rows: subgrid;
+    /* Inherit rows từ parent */
+    grid-row: span 3;
+    /* Span across 3 rows (header, content, footer) */
+}
+
+/* Header section */
+.chartCard>*:first-child {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    text-align: center !important;
+    padding: 1rem !important;
+}
+
+/* Content section */
+.chartCard>*:nth-child(2) {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* Footer section */
+.chartCard>*:last-child {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    text-align: center !important;
+    padding: 1rem !important;
+}
+
+/* Fallback cho browsers không support subgrid */
+@supports not (grid-template-rows: subgrid) {
+    .chartCard {
+        display: flex !important;
+        flex-direction: column !important;
+        height: 100% !important;
+    }
+
+    .chartCard>*:first-child {
+        min-height: 120px !important;
+    }
+
+    .chartCard>*:nth-child(2) {
+        flex: 1 !important;
+    }
+
+    .chartCard>*:last-child {
+        margin-top: auto !important;
+    }
+}
+
+/* Full width section */
+.fullWidth {
+    grid-column: 1 / -1;
+}

@@ -20,14 +20,16 @@ model User {
   password      String?
   emailVerified DateTime?
   image         String?
+  role          String?         @default("user")
   accounts      Account[]
   sessions      Session[]
   // Optional for WebAuthn support
   Authenticator Authenticator[]
 
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  Conversation Conversation[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  Conversation  Conversation[]
+  UserAnalytics UserAnalytics[]
 }
 
 model Account {
@@ -115,6 +117,7 @@ model Message {
   inboxId        String?  @db.ObjectId
   message        String
   sender         String
+  readBy         String[] @default([]) @db.ObjectId // list of user ids that have read the message
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -129,5 +132,59 @@ model Article {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@fulltext([title, content])
+  @@fulltext([title])
+}
+
+model PromptLog {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId         String   @db.ObjectId
+  conversationId String   @db.ObjectId
+  prompt         String
+  response       String?
+  responseTime   Int?
+  intent         String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  Feedback Feedback[]
+}
+
+model Feedback {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  promptLogId String?  @db.ObjectId
+  rating      Int // -1: dislike, 0: neutral, 1: like
+  createdAt   DateTime @default(now())
+
+  PromptLog PromptLog? @relation(fields: [promptLogId], references: [id])
+}
+
+model UserAnalytics {
+  id                   String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId               String    @db.ObjectId
+  totalConversations   Int       @default(0)
+  totalPrompts         Int       @default(0)
+  avgResponseTime      Float?    @default(0)
+  totalFeedback        Int       @default(0)
+  totalFeedbackLike    Int       @default(0)
+  totalFeedbackDislike Int       @default(0)
+  lastActiveAt         DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  User User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model DailyStats {
+  id                   String   @id @default(auto()) @map("_id") @db.ObjectId
+  date                 DateTime @unique
+  totalUsers           Int
+  totalConversations   Int
+  totalMessages        Int
+  totalPrompts         Int
+  totalFeedback        Int
+  totalFeedbackLike    Int
+  totalFeedbackDislike Int
+  avgResponseTime      Float?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 }

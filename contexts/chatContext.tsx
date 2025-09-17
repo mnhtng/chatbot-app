@@ -3,12 +3,12 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react"
 
 interface ChatStateProps {
-    state: "creating" | "idle" | "deleting"
+    state: "creating" | "idle" | "deleting" | "updating"
     inbox?: string | null
 }
 
 interface ChatContextProps {
-    state: "creating" | "idle" | "deleting"
+    state: "creating" | "idle" | "deleting" | "updating"
     inbox?: string | null
     setChatState: ({ state, inbox }: ChatStateProps) => Promise<void>
     model: "ai" | "chatbot"
