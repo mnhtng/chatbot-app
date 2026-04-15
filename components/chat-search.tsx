@@ -26,7 +26,6 @@ import debounce from "@/utils/performance/debounce"
 import useInbox from "@/hooks/useInbox"
 import { SearchResultPlaceholder } from "@/components/ui/placeholder"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { useSession } from "next-auth/react"
 import NewChatButton from "@/components/new-chat-button"
 
 export interface SearchProps {
@@ -37,10 +36,10 @@ export interface SearchProps {
 }
 
 export function ChatSearch() {
-    const { data: session } = useSession()
     const { isMobile, open } = useSidebar()
     const { setChatState, setError } = useChat()
-    const { searchChats } = useInbox()
+    const { searchChats, getOrCreateConversation } = useInbox()
+    const [conversationId, setConversationId] = useState<string>("")
 
     const [searchEngine, setSearchEngine] = useState<SearchProps>({
         query: "",
@@ -49,6 +48,19 @@ export function ChatSearch() {
     })
 
     useEffect(() => {
+        const initConversation = async () => {
+            const persistedConversationId = localStorage.getItem("conversation-id") || undefined
+            const conversation = await getOrCreateConversation(persistedConversationId)
+            if (conversation?.error || !conversation?.id) {
+                setError(conversation?.error || "Failed to initialize conversation")
+                return
+            }
+            localStorage.setItem("conversation-id", conversation.id)
+            setConversationId(conversation.id)
+        }
+
+        initConversation()
+
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.key === "k") {
                 e.preventDefault()
@@ -66,6 +78,7 @@ export function ChatSearch() {
         return () => {
             document.removeEventListener("keydown", handleKeyDown)
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     const handleSearch = useCallback(async (query: string) => {
@@ -77,10 +90,18 @@ export function ChatSearch() {
             }))
             return
         }
+        if (!conversationId) {
+            setSearchEngine((prev) => ({
+                ...prev,
+                results: [],
+                loading: false,
+            }))
+            return
+        }
 
         const res = await searchChats({
             query,
-            conversationId: session?.user?.conversation as string,
+            conversationId,
         })
 
         if (res.error) {
@@ -93,12 +114,12 @@ export function ChatSearch() {
             results: res || [],
             loading: false,
         }))
-    }, [searchChats, session?.user?.conversation, setError])
+    }, [searchChats, conversationId, setError])
 
     const debouncedSearch = useMemo(() => debounce(async (value: string) => {
         await handleSearch(value);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, 500), [session?.user?.conversation])
+    }, 500), [conversationId])
 
     const handleRedirectAndCloseSearch = (chatId: string) => {
         const escapeEvent = new KeyboardEvent("keydown", {

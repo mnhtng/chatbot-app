@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useCallback, useContext, useEffect, useState } from "react"
+import { createContext, useCallback, useContext, useState } from "react"
 
 interface ChatStateProps {
     state: "creating" | "idle" | "deleting"
@@ -11,8 +11,6 @@ interface ChatContextProps {
     state: "creating" | "idle" | "deleting"
     inbox?: string | null
     setChatState: ({ state, inbox }: ChatStateProps) => Promise<void>
-    model: "ai" | "chatbot"
-    setModel: (model: "ai" | "chatbot") => void
     error: string | null
     setError: (error: string | null) => void
     message: string | null
@@ -38,16 +36,7 @@ export function ChatProvider({
         inbox: null
     })
     const [error, setError] = useState<string | null>(null)
-    const [model, setModel] = useState<"ai" | "chatbot">("chatbot")
     const [message, setMessage] = useState<string | null>(null)
-
-    useEffect(() => {
-        const savedModel = localStorage.getItem("chat-model") as "ai" | "chatbot"
-
-        if (savedModel) {
-            setModel(savedModel)
-        }
-    }, [])
 
     const setChatState = useCallback(async ({
         state,
@@ -64,11 +53,6 @@ export function ChatProvider({
         setError(error)
     }, [])
 
-    const setChatModel = useCallback((model: "ai" | "chatbot") => {
-        localStorage.setItem("chat-model", model)
-        setModel(model)
-    }, [])
-
     const setAlert = useCallback((message: string | null) => {
         setMessage(message)
     }, [])
@@ -79,8 +63,6 @@ export function ChatProvider({
                 state: chat.state,
                 inbox: chat.inbox,
                 setChatState,
-                model,
-                setModel: setChatModel,
                 error,
                 setError: setChatError,
                 message,

@@ -1,5 +1,4 @@
 export interface ChatResponseProps {
-    model: "ai" | "chatbot"
     prompt: string
     conversationId?: string | null
     inboxId?: string | null
@@ -8,14 +7,13 @@ export interface ChatResponseProps {
 
 const useResponse = () => {
     const sendMessage = async ({
-        model,
         prompt,
         sender,
         conversationId = null,
         inboxId = null,
     }: ChatResponseProps) => {
         try {
-            const response = await fetch(`/api/chat/${model}`, {
+            const response = await fetch("/api/chat/ai", {
                 method: "POST",
                 body: JSON.stringify({
                     prompt,
@@ -43,34 +41,8 @@ const useResponse = () => {
         }
     }
 
-    const sendGuestMessage = async (prompt: string) => {
-        try {
-            const response = await fetch(`/api/chat/guest`, {
-                method: "POST",
-                body: JSON.stringify({ prompt })
-            });
-
-            if (!response?.ok) {
-                return {
-                    error: "Server busy, please try again later.",
-                }
-            }
-
-            const data = await response.json();
-
-            if (data.error) {
-                return { error: data.error }
-            }
-
-            return data.response || ""
-        } catch (error) {
-            return { error }
-        }
-    }
-
     return {
         sendMessage,
-        sendGuestMessage,
     }
 }
 

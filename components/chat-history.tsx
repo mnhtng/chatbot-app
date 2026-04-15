@@ -32,7 +32,6 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog"
-import { useSession } from "next-auth/react"
 import React, { useEffect, useState } from "react"
 import { useChat } from "@/components/ui/chat"
 import useInbox from "@/hooks/useInbox"
@@ -47,9 +46,9 @@ interface ActionProps {
 
 export function ChatHistory() {
     const { isMobile } = useSidebar()
-    const { data: session } = useSession()
     const { state, inbox, setChatState, setError, setMessage } = useChat()
-    const { getUserInboxes, renameChat, deleteChat } = useInbox()
+    const { getUserInboxes, renameChat, deleteChat, getOrCreateConversation } = useInbox()
+    const [conversationId, setConversationId] = useState<string>("")
 
     const [userInboxes, setUserInboxes] = useState([])
     const [inboxAction, setInboxAction] = useState<ActionProps>({
@@ -58,23 +57,23 @@ export function ChatHistory() {
     })
 
     const fetchInboxes = async () => {
-        if (session?.user.conversation) {
-            const inboxes = await getUserInboxes(session.user.conversation)
+        if (!conversationId) return
 
-            if (inboxes?.error) {
-                AutoCloseAlert({
-                    onStart: () => {
-                        setError(inboxes.error)
-                    },
-                    onClose: () => {
-                        setError(null)
-                    }
-                })
-                return
-            }
+        const inboxes = await getUserInboxes(conversationId)
 
-            setUserInboxes(inboxes)
+        if (inboxes?.error) {
+            AutoCloseAlert({
+                onStart: () => {
+                    setError(inboxes.error)
+                },
+                onClose: () => {
+                    setError(null)
+                }
+            })
+            return
         }
+
+        setUserInboxes(inboxes)
     }
 
     const fetchUserInboxes = async () => {
@@ -82,9 +81,25 @@ export function ChatHistory() {
     }
 
     useEffect(() => {
+        const initConversation = async () => {
+            const persistedConversationId = localStorage.getItem("conversation-id") || undefined
+            const conversation = await getOrCreateConversation(persistedConversationId)
+            if (conversation?.error || !conversation?.id) {
+                setError(conversation?.error || "Failed to initialize conversation")
+                return
+            }
+            localStorage.setItem("conversation-id", conversation.id)
+            setConversationId(conversation.id)
+        }
+
+        initConversation()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+
+    useEffect(() => {
         fetchUserInboxes()
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [session, state, inbox])
+    }, [conversationId, state, inbox])
 
     const onRenameMode = (inboxId: string) => {
         setInboxAction({

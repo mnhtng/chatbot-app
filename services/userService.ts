@@ -1,43 +1,25 @@
 import db from "@/_lib/prisma"
 
-export const getUser = async ({
-    email
+export const getOrCreateConversation = async ({
+    conversationId
 }: {
-    email: string
+    conversationId?: string
 }) => {
-    const userEmail = email.trim().toLocaleLowerCase()
-
-    return await db.user.findFirst({
-        where: {
-            email: userEmail
-        }
-    })
-}
-
-export const createUserConversation = async ({
-    userId
-}: {
-    userId: string
-}) => {
-    const existingConversation = await db.conversation.findFirst({
-        where: {
-            userId,
-        }
-    })
-
-    if (!existingConversation) {
-        return await db.conversation.create({
-            data: {
-                user: {
-                    connect: {
-                        id: userId
-                    }
-                }
+    if (conversationId) {
+        const existingConversation = await db.conversation.findUnique({
+            where: {
+                id: conversationId
             }
         })
+
+        if (existingConversation) {
+            return existingConversation
+        }
     }
 
-    return existingConversation
+    return await db.conversation.create({
+        data: {}
+    })
 }
 
 export const createUserInbox = async (

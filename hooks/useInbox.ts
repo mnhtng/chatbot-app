@@ -1,4 +1,22 @@
 const useInbox = () => {
+    const getOrCreateConversation = async (conversationId?: string) => {
+        const response = await fetch("/api/user/conversation/get-or-create", {
+            method: "POST",
+            body: JSON.stringify({ conversationId }),
+        })
+
+        if (!response.ok) {
+            return { error: "Failed to initialize conversation" }
+        }
+
+        const data = await response.json()
+        if (data.error) {
+            return { error: data.error }
+        }
+
+        return data.conversation
+    }
+
     const getUserInboxes = async (conversationId: string) => {
         const response = await fetch(`/api/user/inbox/get`, {
             method: "POST",
@@ -130,6 +148,7 @@ const useInbox = () => {
     }
 
     return {
+        getOrCreateConversation,
         getUserInboxes,
         createNewChat,
         renameChat,

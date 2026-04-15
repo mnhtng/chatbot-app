@@ -2,11 +2,9 @@
 
 import * as React from "react"
 
-import { NavUser } from "@/components/nav-user"
 import {
     Sidebar,
     SidebarContent,
-    SidebarFooter,
     SidebarHeader,
 } from "@/components/ui/sidebar"
 import { ChatSearch } from "@/components/chat-search"
@@ -22,13 +20,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarContent>
                 <ChatHistory />
             </SidebarContent>
-
-            <SidebarFooter>
-                <NavUser />
-            </SidebarFooter>
-
-            {/* The same function with SidebarTrigger SidebarTrigger SidebarTrigger component */}
-            {/* <SidebarRail /> */}
         </Sidebar>
     )
 }

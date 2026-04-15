@@ -9,7 +9,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import useResponse from "@/hooks/useResponse";
 import { useChat } from "@/components/ui/chat";
 import useMessage from "@/hooks/useMessage";
-import { useSession } from "next-auth/react";
 import Image from "next/image";
 import { AutoCloseAlert } from "@/utils/alertUtil";
 import useInbox from "@/hooks/useInbox";
@@ -33,67 +32,72 @@ export interface ConversationProps {
     error: string | null;
 }
 
-export interface GuestConversation {
-    messages: MessagesConversationProps[];
-    isLoading: boolean;
-    error: string | null;
-}
-
 const ChatInterface = () => {
-    const { data: session } = useSession()
-    const { state, inbox, error, model, message, setChatState, setError, setMessage } = useChat()
-    const { sendMessage, sendGuestMessage } = useResponse()
+    const { state, inbox, error, message, setChatState, setError, setMessage } = useChat()
+    const { sendMessage } = useResponse()
     const { getUserMessages } = useMessage()
-    const { createNewChat } = useInbox()
+    const { createNewChat, getOrCreateConversation } = useInbox()
 
     const messagesEndRef = useRef<HTMLDivElement>(null)
     const inputPromptRef = useRef<HTMLInputElement>(null)
+    const conversationIdRef = useRef<string>("")
     const [inputPrompt, setInputPrompt] = useState<string>("")
     const [conversation, setConversation] = useState<ConversationProps>({
         messages: [],
         isLoading: false,
         error: null
     })
-    const [guestConversation, setGuestConversation] = useState<GuestConversation>({
-        messages: [],
-        isLoading: false,
-        error: null
-    })
 
-    const fetchMessages = async (inboxId = null) => {
-        if (session?.user?.conversation) {
-            const listMessage = await getUserMessages({
-                conversationId: session.user.conversation,
-                inboxId: inbox || inboxId || ""
-            })
-
-            if (listMessage?.error) {
-                AutoCloseAlert({
-                    onStart: () => {
-                        setConversation(prev => ({
-                            ...prev,
-                            error: listMessage.error as string,
-                            isLoading: false
-                        }))
-                    },
-                    onClose: () => {
-                        setConversation(prev => ({
-                            ...prev,
-                            error: null,
-                            isLoading: false
-                        }))
-                    }
-                })
+    useEffect(() => {
+        const initConversation = async () => {
+            const persistedConversationId = localStorage.getItem("conversation-id") || undefined
+            const conversation = await getOrCreateConversation(persistedConversationId)
+            if (conversation?.error || !conversation?.id) {
+                setError(conversation?.error || "Failed to initialize conversation")
                 return
             }
-
-            setConversation(prev => ({
-                ...prev,
-                messages: listMessage,
-                isLoading: false,
-                error: null
-            }))
+            localStorage.setItem("conversation-id", conversation.id)
+            conversationIdRef.current = conversation.id
         }
+
+        initConversation()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+
+    const fetchMessages = async (inboxId: string | null = null) => {
+        if (!conversationIdRef.current) return
+
+        const listMessage = await getUserMessages({
+            conversationId: conversationIdRef.current,
+            inboxId: inbox || inboxId || ""
+        })
+
+        if (listMessage?.error) {
+            AutoCloseAlert({
+                onStart: () => {
+                    setConversation(prev => ({
+                        ...prev,
+                        error: listMessage.error as string,
+                        isLoading: false
+                    }))
+                },
+                onClose: () => {
+                    setConversation(prev => ({
+                        ...prev,
+                        error: null,
+                        isLoading: false
+                    }))
+                }
+            })
+            return
+        }
+
+        setConversation(prev => ({
+            ...prev,
+            messages: listMessage,
+            isLoading: false,
+            error: null
+        }))
     }
 
     const fetchUserMessage = async () => {
@@ -103,12 +107,6 @@ const ChatInterface = () => {
     useEffect(() => {
         if (inbox === "" || inbox === null) {
             setConversation(prev => ({
-                ...prev,
-                messages: [],
-                isLoading: false,
-                error: null
-            }))
-            setGuestConversation(prev => ({
                 ...prev,
                 messages: [],
                 isLoading: false,
@@ -138,48 +136,6 @@ const ChatInterface = () => {
         }))
 
         try {
-            //! Guest user
-            if (!session?.user.id) {
-                setGuestConversation((prev) => ({
-                    ...prev,
-                    messages: [...prev.messages, { id: Math.random().toString(), role: "user", content: input }],
-                    isLoading: true,
-                    error: null
-                }))
-
-                const res = await sendGuestMessage(input)
-
-                if (res?.error) {
-                    AutoCloseAlert({
-                        onStart: () => {
-                            setGuestConversation((prev) => ({
-                                ...prev,
-                                error: res.error as string,
-                                isLoading: false
-                            }))
-                        },
-                        onClose: () => {
-                            setGuestConversation((prev) => ({
-                                ...prev,
-                                error: null,
-                                isLoading: false
-                            }))
-                        }
-                    })
-                    return
-                }
-
-                setGuestConversation((prev) => ({
-                    ...prev,
-                    messages: [...prev.messages, { id: Math.random().toString(), role: "assistant", content: res }],
-                    isLoading: false,
-                    error: null
-                }))
-
-                return
-            }
-
-            //! Authenticated user
             setConversation((prev) => ({
                 ...prev,
                 isLoading: true,
@@ -190,7 +146,10 @@ const ChatInterface = () => {
 
             // Create new chat if inbox is not set
             if (inbox === "" || inbox === null) {
-                const newChat = await createNewChat(session?.user?.conversation as string)
+                if (!conversationIdRef.current) {
+                    throw new Error("Conversation has not been initialized")
+                }
+                const newChat = await createNewChat(conversationIdRef.current)
 
                 if (newChat?.error) {
                     AutoCloseAlert({
@@ -221,10 +180,9 @@ const ChatInterface = () => {
             }
 
             const res = await sendMessage({
-                model: model,
                 prompt: input,
-                sender: session?.user?.id as string,
-                conversationId: session?.user?.conversation as string,
+                sender: "guest",
+                conversationId: conversationIdRef.current,
                 inboxId: newInboxChat || inbox || "",
             })
 
@@ -297,21 +255,17 @@ const ChatInterface = () => {
         if (messagesEndRef.current) {
             messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
         }
-    }, [conversation.messages, guestConversation.messages])
+    }, [conversation.messages])
 
-    // console.log("Session: ", session);
     // console.log("Chat Props:", {
     //     "inbox": inbox,
-    //     "model": model,
     //     "message": message,
     //     "error": error,
     // });
     // console.log("Conversation State:", conversation);
-    // console.log("Guest Conversation State:", guestConversation);
-
     return (
         <>
-            {(conversation.error || guestConversation.error || (error !== null && error !== "")) && (
+            {(conversation.error || (error !== null && error !== "")) && (
                 <Alert variant="destructive" className="fixed top-16 right-0 z-50 w-[90vw] max-w-sm">
                     <AlertCircle className="h-4 w-4" />
 
@@ -357,14 +311,14 @@ const ChatInterface = () => {
 
             <div className="flex flex-1 flex-col overflow-auto gap-4 p-4">
                 <div className="mx-auto w-full max-w-2xl space-y-4">
-                    {(conversation.messages.length === 0 && guestConversation.messages.length === 0 && !inputPrompt) ? (
+                    {(conversation.messages.length === 0 && !inputPrompt) ? (
                         <div className="flex h-[60vh] items-center justify-center text-slate-500 flex-col gap-4">
                             <p className="text-lg font-medium">Start a conversation with our Assistant</p>
                             <p className="text-sm text-center max-w-md">
                                 Ask a question or select a quick response below to get started.
                             </p>
                         </div>
-                    ) : conversation.messages.length ? (
+                    ) : (
                         conversation.messages.map((message) => (
                             <div
                                 key={message.id}
@@ -374,23 +328,13 @@ const ChatInterface = () => {
                                     <Avatar className="h-8 w-8">
                                         {message.role === "user" ? (
                                             <>
-                                                {session?.user.image ? (
-                                                    <Image
-                                                        src={session?.user.image}
-                                                        alt="User Avatar"
-                                                        width={32}
-                                                        height={32}
-                                                        priority
-                                                    />
-                                                ) : (
-                                                    <Image
-                                                        src="/avatar/user.png"
-                                                        alt="User Avatar"
-                                                        width={32}
-                                                        height={32}
-                                                        priority
-                                                    />
-                                                )}
+                                                <Image
+                                                    src="/avatar/user.png"
+                                                    alt="User Avatar"
+                                                    width={32}
+                                                    height={32}
+                                                    priority
+                                                />
                                                 <AvatarFallback className="text-foreground">US</AvatarFallback>
                                             </>
                                         ) : (
@@ -423,77 +367,20 @@ const ChatInterface = () => {
                                 </div>
                             </div>
                         ))
-                    ) : guestConversation.messages.map((message) => (
-                        <div
-                            key={message.id}
-                            className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-                        >
-                            <div className={`flex gap-3 max-w-[80%] ${message.role === "user" ? "flex-row-reverse" : ""}`}>
-                                <Avatar className="h-8 w-8">
-                                    {message.role === "user" ? (
-                                        <>
-                                            <Image
-                                                src="/avatar/user.png"
-                                                alt="User Avatar"
-                                                width={32}
-                                                height={32}
-                                                priority
-                                            />
-                                            <AvatarFallback className="text-foreground">US</AvatarFallback>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Image
-                                                src="/avatar/chatbot.png"
-                                                alt="Chatbot Avatar"
-                                                width={32}
-                                                height={32}
-                                                priority
-                                            />
-                                            <AvatarFallback className="text-foreground">AI</AvatarFallback>
-                                        </>
-                                    )}
-                                </Avatar>
+                    )}
 
-                                {/* Content */}
-                                <div
-                                    className={`rounded-lg p-3 ${message.role === "user" ? "bg-primary text-(--revert-color)" : "bg-muted text-foreground"
-                                        }`}
-                                >
-                                    <div className="whitespace-pre-wrap">
-                                        {message.role === "user" ? (
-                                            <div>{message.content.trim()}</div>
-                                        ) : (
-                                            <div dangerouslySetInnerHTML={{ __html: message.content.trim() }} />
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-
-                    {inputPrompt && session?.user ? (
+                    {inputPrompt ? (
                         <>
                             <div className="flex justify-end">
                                 <div className="flex gap-3 max-w-[80%] flex-row-reverse">
                                     <Avatar className="h-8 w-8">
-                                        {session?.user.image ? (
-                                            <Image
-                                                src={session?.user.image}
-                                                alt="User Avatar"
-                                                width={32}
-                                                height={32}
-                                                priority
-                                            />
-                                        ) : (
-                                            <Image
-                                                src="/avatar/user.png"
-                                                alt="User Avatar"
-                                                width={32}
-                                                height={32}
-                                                priority
-                                            />
-                                        )}
+                                        <Image
+                                            src="/avatar/user.png"
+                                            alt="User Avatar"
+                                            width={32}
+                                            height={32}
+                                            priority
+                                        />
                                         <AvatarFallback className="text-foreground">US</AvatarFallback>
                                     </Avatar>
 
@@ -522,7 +409,7 @@ const ChatInterface = () => {
                                 </div>
                             </div>
                         </>
-                    ) : (!session && guestConversation.messages.length > 0 && guestConversation.isLoading) && (
+                    ) : conversation.messages.length > 0 && conversation.isLoading && (
                         <div className="flex justify-start">
                             <div className="flex gap-3 max-w-[80%]">
                                 <Avatar className="h-8 w-8">
@@ -561,7 +448,7 @@ const ChatInterface = () => {
                                 <DropdownMenuContent align="start">
                                     <DropdownMenuItem
                                         onClick={() => handleQuickChat("Cách học tiếng Anh hiệu quả?")}
-                                        className={`cursor-pointer group ${(conversation.isLoading || guestConversation.isLoading) && "select-none pointer-events-none"}`}
+                                        className={`cursor-pointer group ${conversation.isLoading && "select-none pointer-events-none"}`}
                                     >
                                         <span className="flex items-center gap-2 group">
                                             <CircleChevronRight className="-ml-6 opacity-0 group-hover:ml-0 group-hover:opacity-100 transition-all duration-200" />
@@ -570,7 +457,7 @@ const ChatInterface = () => {
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                         onClick={() => handleQuickChat("Quản lý thời gian trong công việc?")}
-                                        className={`cursor-pointer group ${(conversation.isLoading || guestConversation.isLoading) && "select-none pointer-events-none"}`}
+                                        className={`cursor-pointer group ${conversation.isLoading && "select-none pointer-events-none"}`}
                                     >
                                         <span className="flex items-center gap-2 group">
                                             <CircleChevronRight className="-ml-6 opacity-0 group-hover:ml-0 group-hover:opacity-100 transition-all duration-200" />
@@ -579,7 +466,7 @@ const ChatInterface = () => {
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                         onClick={() => handleQuickChat("Cách giảm stress?")}
-                                        className={`cursor-pointer group ${(conversation.isLoading || guestConversation.isLoading) && "select-none pointer-events-none"}`}
+                                        className={`cursor-pointer group ${conversation.isLoading && "select-none pointer-events-none"}`}
                                     >
                                         <span className="flex items-center gap-2 group">
                                             <CircleChevronRight className="-ml-6 opacity-0 group-hover:ml-0 group-hover:opacity-100 transition-all duration-200" />
@@ -588,7 +475,7 @@ const ChatInterface = () => {
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                         onClick={() => handleQuickChat("Cải thiện kỹ năng giao tiếp?")}
-                                        className={`cursor-pointer group ${(conversation.isLoading || guestConversation.isLoading) && "select-none pointer-events-none"}`}
+                                        className={`cursor-pointer group ${conversation.isLoading && "select-none pointer-events-none"}`}
                                     >
                                         <span className="flex items-center gap-2 group">
                                             <CircleChevronRight className="-ml-6 opacity-0 group-hover:ml-0 group-hover:opacity-100 transition-all duration-200" />
@@ -606,12 +493,12 @@ const ChatInterface = () => {
                                 name="prompt"
                                 placeholder="Type your message..."
                                 className="flex-1"
-                                disabled={conversation.isLoading || guestConversation.isLoading}
+                                disabled={conversation.isLoading}
                             />
                         </div>
 
                         <div className="flex flex-col justify-end gap-2">
-                            <Button type="submit" disabled={conversation.isLoading || guestConversation.isLoading}>
+                            <Button type="submit" disabled={conversation.isLoading}>
                                 <Send className="h-4 w-4" />
                                 <span className="sr-only">Send</span>
                             </Button>
