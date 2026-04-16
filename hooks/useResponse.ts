@@ -2,6 +2,7 @@ export interface ChatResponseProps {
     prompt: string
     conversationId?: number | null
     sender: string
+    onStream?: (chunk: string) => void
 }
 
 import db from "@/db/db"
@@ -11,6 +12,7 @@ const useResponse = () => {
         prompt,
         sender,
         conversationId = null,
+        onStream,
     }: ChatResponseProps) => {
         try {
             const response = await fetch("/api/chat/ai", {
@@ -28,14 +30,27 @@ const useResponse = () => {
                 }
             }
 
-            const data = await response.json();
-
-            if (data.error) {
-                return { error: data.error }
+            if (!response.body) {
+                return { error: "No response stream from server." }
             }
 
             if (conversationId === null) {
                 return { error: "Conversation is not initialized." }
+            }
+
+            const reader = response.body.getReader()
+            const decoder = new TextDecoder()
+            let assistantMessage = ""
+
+            while (true) {
+                const { value, done } = await reader.read()
+                if (done) break
+
+                const chunk = decoder.decode(value, { stream: true })
+                if (!chunk) continue
+
+                assistantMessage += chunk
+                onStream?.(chunk)
             }
 
             await db.messages.bulkAdd([
@@ -47,13 +62,13 @@ const useResponse = () => {
                 },
                 {
                     conversationId,
-                    message: data.message,
+                    message: assistantMessage,
                     sender: "assistant",
                     createdAt: new Date(),
                 },
             ])
 
-            return { message: data.message }
+            return { message: assistantMessage }
         } catch (error) {
             return { error }
         }

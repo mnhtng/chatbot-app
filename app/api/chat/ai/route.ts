@@ -1,80 +1,129 @@
 import { NextResponse } from "next/server";
 
+const extractStreamText = (payload: unknown): string => {
+    if (!payload || typeof payload !== "object") return ""
+
+    const choice = (payload as { choices?: Array<{ delta?: { content?: unknown }; text?: unknown }> }).choices?.[0]
+    if (!choice) return ""
+
+    const deltaContent = choice.delta?.content
+    if (typeof deltaContent === "string") return deltaContent
+
+    if (Array.isArray(deltaContent)) {
+        return deltaContent
+            .map((part) => {
+                if (typeof part === "string") return part
+                if (!part || typeof part !== "object") return ""
+                const text = (part as { text?: unknown }).text
+                return typeof text === "string" ? text : ""
+            })
+            .join("")
+    }
+
+    return typeof choice.text === "string" ? choice.text : ""
+}
+
 export async function POST(request: Request) {
     const body = await request.json()
+    const { prompt } = body
+
+    if (!prompt || typeof prompt !== "string") {
+        return NextResponse.json(
+            { error: "Prompt is required." },
+            { status: 400 }
+        )
+    }
 
     try {
-        const { prompt } = body
-
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
             headers: {
-                "Authorization": `Bearer ${process.env.NVIDIA_API_KEY}`,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                "model": "nvidia/nemotron-3-nano-30b-a3b:free",
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
-                "reasoning": { "enabled": true }
-            })
-        });
-
-        const result = await response.json();
-        const responseMessage = result.choices[0].message;
-
-        const messages = [
-            {
-                role: 'user',
-                content: prompt,
-            },
-            {
-                role: 'assistant',
-                content: responseMessage.content,
-                reasoning_details: responseMessage.reasoning_details, // Pass back unmodified
-            },
-            {
-                role: 'user',
-                content: "Are you sure? Think carefully.",
-            },
-        ];
-
-        const response2 = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${process.env.NVIDIA_API_KEY}`,
+                Authorization: `Bearer ${process.env.NVIDIA_API_KEY}`,
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
-                "model": "nvidia/nemotron-3-nano-30b-a3b:free",
-                "messages": messages
-            })
-        });
+                model: "nvidia/nemotron-3-nano-30b-a3b:free",
+                messages: [{ role: "user", content: prompt }],
+                stream: true,
+                reasoning: { enabled: false },
+            }),
+        })
 
-        const result2 = await response2.json();
+        if (!response.ok || !response.body) {
+            const errorText = await response.text()
+            console.error("OpenRouter error:", errorText)
+            return NextResponse.json(
+                { error: "Failed to get AI response" },
+                { status: response.status || 500 }
+            )
+        }
 
-        const message2 = result2.choices[0]?.message?.content
-            ? result2.choices[0].message.content
-            : "Xin lỗi, tôi hiện không có đủ thông tin để đưa ra câu trả lời chính xác cho yêu cầu của bạn.";
+        const encoder = new TextEncoder()
+        const decoder = new TextDecoder()
+        const reader = response.body.getReader()
 
-        return NextResponse.json({
-            message: message2,
-        }, {
+        const stream = new ReadableStream<Uint8Array>({
+            async start(controller) {
+                let buffer = ""
+
+                while (true) {
+                    const { value, done } = await reader.read()
+                    if (done) break
+
+                    buffer += decoder.decode(value, { stream: true })
+                    const lines = buffer.split("\n")
+                    buffer = lines.pop() ?? ""
+
+                    for (const line of lines) {
+                        const trimmed = line.trim()
+                        if (!trimmed.startsWith("data:")) continue
+
+                        const data = trimmed.slice(5).trim()
+                        if (!data || data === "[DONE]") continue
+
+                        try {
+                            const json = JSON.parse(data)
+                            const content = extractStreamText(json)
+                            if (content) {
+                                controller.enqueue(encoder.encode(content))
+                            }
+                        } catch {
+                            // ignore malformed SSE chunk
+                        }
+                    }
+                }
+
+                if (buffer.trim().startsWith("data:")) {
+                    const data = buffer.trim().slice(5).trim()
+                    if (data && data !== "[DONE]") {
+                        try {
+                            const json = JSON.parse(data)
+                            const content = extractStreamText(json)
+                            if (content) {
+                                controller.enqueue(encoder.encode(content))
+                            }
+                        } catch {
+                            // ignore malformed trailing chunk
+                        }
+                    }
+                }
+
+                controller.close()
+            },
+        })
+
+        return new Response(stream, {
             status: 200,
-            headers: { "Content-Type": "application/json" }
+            headers: {
+                "Content-Type": "text/plain; charset=utf-8",
+                "Cache-Control": "no-cache, no-transform",
+            },
         })
     } catch (error) {
-        console.error("Error fetching AI response:", error);
-
-        return NextResponse.json({
-            error: "Failed to get AI response"
-        }, {
-            status: 500,
-            headers: { "Content-Type": "application/json" }
-        })
+        console.error("Error fetching AI response:", error)
+        return NextResponse.json(
+            { error: "Failed to get AI response" },
+            { status: 500 }
+        )
     }
 }

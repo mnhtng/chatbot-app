@@ -6,11 +6,46 @@ export interface ConversationActionResult {
     error?: string
 }
 
+const createConversationName = (prompt?: string): string => {
+    const fallbackName = "New Chat"
+    if (!prompt) return fallbackName
+
+    const normalizedPrompt = prompt.replace(/\s+/g, " ").trim()
+    if (!normalizedPrompt) return fallbackName
+
+    const maxLength = 60
+    if (normalizedPrompt.length <= maxLength) return normalizedPrompt
+
+    const clipped = normalizedPrompt.slice(0, maxLength).replace(/\s+\S*$/, "").trim()
+    return `${clipped || normalizedPrompt.slice(0, maxLength)}...`
+}
+
 const useConversation = () => {
-    const createChat = async (): Promise<ConversationActionResult> => {
+    const createChat = async (initialPrompt?: string): Promise<ConversationActionResult> => {
         try {
+            let generatedName = createConversationName(initialPrompt)
+
+            if (initialPrompt?.trim()) {
+                const response = await fetch("/api/chat/title", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        prompt: initialPrompt,
+                    }),
+                })
+
+                if (response.ok) {
+                    const data = await response.json()
+                    if (data?.title && typeof data.title === "string") {
+                        generatedName = createConversationName(data.title)
+                    }
+                }
+            }
+
             const id = await db.conversations.add({
-                name: "New Chat",
+                name: generatedName,
                 createdAt: new Date(),
                 updatedAt: new Date(),
             })

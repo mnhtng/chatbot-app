@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AlertCircle, CircleChevronRight, Lightbulb, Send, X } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import useResponse from "@/hooks/useResponse";
 import { useChat } from "@/components/ui/chat";
@@ -20,6 +20,57 @@ import {
 import { LoadingDots } from "@/components/icon/animate";
 import { useLiveQuery } from "dexie-react-hooks";
 import db from "@/db/db";
+import {
+    codeBlockLookBack,
+    findCompleteCodeBlock,
+    findPartialCodeBlock,
+} from "@llm-ui/code";
+import { markdownLookBack } from "@llm-ui/markdown";
+import { throttleBasic, useLLMOutput } from "@llm-ui/react";
+import Markdown from "@/components/llm/markdown";
+import CodeBlock from "@/components/llm/block";
+
+type LLMMessageContentProps = {
+    content: string;
+    isStreamFinished?: boolean;
+};
+
+const LLMMessageContent = ({ content, isStreamFinished = true }: LLMMessageContentProps) => {
+    const throttle = useMemo(() => throttleBasic({
+        readAheadChars: 10,
+        targetBufferChars: 7,
+        adjustPercentage: 0.35,
+        frameLookBackMs: 10000,
+        windowLookBackMs: 2000,
+    }), []);
+
+    const { blockMatches } = useLLMOutput({
+        llmOutput: content,
+        fallbackBlock: {
+            component: Markdown,
+            lookBack: markdownLookBack(),
+        },
+        blocks: [
+            {
+                component: CodeBlock,
+                findCompleteMatch: findCompleteCodeBlock(),
+                findPartialMatch: findPartialCodeBlock(),
+                lookBack: codeBlockLookBack(),
+            },
+        ],
+        isStreamFinished,
+        throttle,
+    });
+
+    return (
+        <div className="space-y-2">
+            {blockMatches.map((blockMatch, index) => {
+                const Component = blockMatch.block.component;
+                return <Component key={index} blockMatch={blockMatch} />;
+            })}
+        </div>
+    );
+};
 
 const ChatInterface = () => {
     const { inbox, error, message, setChatState, setError, setMessage } = useChat()
@@ -29,6 +80,7 @@ const ChatInterface = () => {
     const messagesEndRef = useRef<HTMLDivElement>(null)
     const inputPromptRef = useRef<HTMLInputElement>(null)
     const [inputPrompt, setInputPrompt] = useState<string>("")
+    const [streamingResponse, setStreamingResponse] = useState<string>("")
     const [isLoading, setIsLoading] = useState(false)
     const [conversationError, setConversationError] = useState<string | null>(null)
 
@@ -54,6 +106,7 @@ const ChatInterface = () => {
 
         if (!input.trim()) return
         setInputPrompt(input)
+        setStreamingResponse("")
         setIsLoading(true)
         setConversationError(null)
 
@@ -62,12 +115,12 @@ const ChatInterface = () => {
 
             // Create new chat if inbox is not set
             if (inbox === null) {
-                const newChat = await createChat()
+                const newChat = await createChat(input)
 
                 if (newChat?.error) {
                     AutoCloseAlert({
                         onStart: () => {
-                            setConversationError(newChat?.error)
+                            setConversationError(newChat.error ?? null)
                             setIsLoading(false)
                         },
                         onClose: () => {
@@ -96,6 +149,9 @@ const ChatInterface = () => {
                 prompt: input,
                 sender: "guest",
                 conversationId,
+                onStream: (chunk) => {
+                    setStreamingResponse((prev) => prev + chunk)
+                },
             })
 
             if (res?.error) {
@@ -198,8 +254,8 @@ const ChatInterface = () => {
                 </Alert>
             )}
 
-            <div className="flex flex-1 flex-col overflow-auto gap-4 p-4">
-                <div className="mx-auto w-full max-w-2xl space-y-4">
+            <div className="flex flex-1 flex-col overflow-auto gap-4 p-4 md:p-10">
+                <div className="mx-auto w-full space-y-4">
                     {(messages.length === 0 && !inputPrompt) ? (
                         <div className="flex h-[60vh] items-center justify-center text-slate-500 flex-col gap-4">
                             <p className="text-lg font-medium">Start a conversation with our Assistant</p>
@@ -249,7 +305,7 @@ const ChatInterface = () => {
                                         >
                                             <div className="whitespace-pre-wrap">
                                                 {isAssistant ? (
-                                                    <div dangerouslySetInnerHTML={{ __html: message.message.trim() }} />
+                                                    <LLMMessageContent content={message.message.trim()} />
                                                 ) : (
                                                     <div>{message.message.trim()}</div>
                                                 )}
@@ -296,7 +352,14 @@ const ChatInterface = () => {
                                     </Avatar>
 
                                     <div className="rounded-lg bg-muted text-foreground p-3">
-                                        <LoadingDots />
+                                        {streamingResponse ? (
+                                            <LLMMessageContent
+                                                content={streamingResponse}
+                                                isStreamFinished={!isLoading}
+                                            />
+                                        ) : (
+                                            <LoadingDots />
+                                        )}
                                     </div>
                                 </div>
                             </div>
