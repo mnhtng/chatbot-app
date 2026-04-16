@@ -22,7 +22,7 @@ export async function POST(request: Request) {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
-                model: "meta-llama/llama-guard-4-12b:free",
+                model: "nvidia/nemotron-3-nano-30b-a3b:free",
                 messages: [
                     {
                         role: "user",
