@@ -32,76 +32,33 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog"
-import React, { useEffect, useState } from "react"
+import React, { useState } from "react"
 import { useChat } from "@/components/ui/chat"
-import useInbox from "@/hooks/useInbox"
+import useConversation from "@/hooks/useConversation"
 import { Input } from "@/components/ui/input"
 import { Button } from "./ui/button"
 import { AutoCloseAlert } from "@/utils/alertUtil"
+import { useLiveQuery } from "dexie-react-hooks"
+import db from "@/db/db"
 
 interface ActionProps {
-    action: string | null
+    action: number | null
     isLoading: boolean
 }
 
 export function ChatHistory() {
     const { isMobile } = useSidebar()
-    const { state, inbox, setChatState, setError, setMessage } = useChat()
-    const { getUserInboxes, renameChat, deleteChat, getOrCreateConversation } = useInbox()
-    const [conversationId, setConversationId] = useState<string>("")
+    const { inbox, setChatState, setError, setMessage } = useChat()
+    const { renameChat, deleteChat } = useConversation()
 
-    const [userInboxes, setUserInboxes] = useState([])
     const [inboxAction, setInboxAction] = useState<ActionProps>({
         action: null,
         isLoading: false
     })
 
-    const fetchInboxes = async () => {
-        if (!conversationId) return
+    const inboxes = useLiveQuery(() => db.conversations.toArray())
 
-        const inboxes = await getUserInboxes(conversationId)
-
-        if (inboxes?.error) {
-            AutoCloseAlert({
-                onStart: () => {
-                    setError(inboxes.error)
-                },
-                onClose: () => {
-                    setError(null)
-                }
-            })
-            return
-        }
-
-        setUserInboxes(inboxes)
-    }
-
-    const fetchUserInboxes = async () => {
-        await fetchInboxes()
-    }
-
-    useEffect(() => {
-        const initConversation = async () => {
-            const persistedConversationId = localStorage.getItem("conversation-id") || undefined
-            const conversation = await getOrCreateConversation(persistedConversationId)
-            if (conversation?.error || !conversation?.id) {
-                setError(conversation?.error || "Failed to initialize conversation")
-                return
-            }
-            localStorage.setItem("conversation-id", conversation.id)
-            setConversationId(conversation.id)
-        }
-
-        initConversation()
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
-
-    useEffect(() => {
-        fetchUserInboxes()
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [conversationId, state, inbox])
-
-    const onRenameMode = (inboxId: string) => {
+    const onRenameMode = (inboxId: number) => {
         setInboxAction({
             action: inboxId,
             isLoading: false
@@ -137,14 +94,14 @@ export function ChatHistory() {
             })
 
             const res = await renameChat({
-                inboxId: inboxAction.action as string,
+                conversationId: inboxAction.action as number,
                 newName: newName.trim(),
             })
 
             if (res?.error) {
                 AutoCloseAlert({
                     onStart: () => {
-                        setError(res.error)
+                        setError(res.error ?? null)
                     },
                     onClose: () => {
                         setError(null)
@@ -155,14 +112,12 @@ export function ChatHistory() {
 
             AutoCloseAlert({
                 onStart: () => {
-                    setMessage(res)
+                    setMessage(res.message ?? null)
                 },
                 onClose: () => {
                     setMessage(null)
                 }
             })
-
-            await fetchInboxes()
         } catch (error) {
             AutoCloseAlert({
                 onStart: () => {
@@ -184,7 +139,7 @@ export function ChatHistory() {
         e.preventDefault()
 
         const formData = new FormData(e.currentTarget)
-        const inboxId = formData.get("chatId") as string
+        const conversationId = Number(formData.get("chatId"))
 
         try {
             setInboxAction({
@@ -192,12 +147,12 @@ export function ChatHistory() {
                 isLoading: true
             })
 
-            const res = await deleteChat(inboxId)
+            const res = await deleteChat(conversationId)
 
             if (res?.error) {
                 AutoCloseAlert({
                     onStart: () => {
-                        setError(res.error)
+                        setError(res.error ?? null)
                     },
                     onClose: () => {
                         setError(null)
@@ -208,15 +163,13 @@ export function ChatHistory() {
 
             AutoCloseAlert({
                 onStart: () => {
-                    setMessage(res)
+                    setMessage(res.message ?? null)
                     setChatState({ state: "deleting" })
                 },
                 onClose: () => {
                     setMessage(null)
                 }
             })
-
-            await fetchInboxes()
         } catch (error) {
             AutoCloseAlert({
                 onStart: () => {
@@ -241,7 +194,7 @@ export function ChatHistory() {
             </SidebarGroupLabel>
 
             <SidebarMenu>
-                {userInboxes.length ? (userInboxes.map((ib: { id: string; name: string }) => (
+                {inboxes?.length ? (inboxes.map((ib) => (
                     <SidebarMenuItem
                         key={ib.id}
                         onClick={() => setChatState({ state: "idle", inbox: ib.id })}
@@ -286,7 +239,7 @@ export function ChatHistory() {
                                         align={isMobile ? "end" : "start"}
                                     >
                                         <DropdownMenuItem
-                                            onClick={() => onRenameMode(ib.id)}
+                                            onClick={() => ib.id !== undefined && onRenameMode(ib.id)}
                                             className="cursor-pointer"
                                         >
                                             <PenTool className="mr-2" />
@@ -299,7 +252,7 @@ export function ChatHistory() {
                                             <DialogTrigger asChild>
                                                 <Button
                                                     variant="ghost"
-                                                    className="focus:bg-accent focus:text-accent-foreground data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 dark:data-[variant=destructive]:focus:bg-destructive/20 data-[variant=destructive]:focus:text-destructive data-[variant=destructive]:*:[svg]:!text-destructive [&_svg:not([class*='text-'])]:text-muted-foreground relative flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[inset]:pl-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 w-full justify-start text-red-500 hover:text-red-500"
+                                                    className="focus:bg-accent focus:text-accent-foreground data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 dark:data-[variant=destructive]:focus:bg-destructive/20 data-[variant=destructive]:focus:text-destructive data-[variant=destructive]:*:[svg]:text-destructive! [&_svg:not([class*='text-'])]:text-muted-foreground relative flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50 data-inset:pl-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 w-full justify-start text-red-500 hover:text-red-500"
                                                 >
                                                     <Trash2
                                                         className="mr-2"

@@ -23,23 +23,22 @@ import { useEffect, useState, useCallback, useMemo } from "react"
 import { Separator } from "@/components/ui/separator"
 import { SearchPoster } from "@/components/icon/illustration"
 import debounce from "@/utils/performance/debounce"
-import useInbox from "@/hooks/useInbox"
 import { SearchResultPlaceholder } from "@/components/ui/placeholder"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import NewChatButton from "@/components/new-chat-button"
+import { useLiveQuery } from "dexie-react-hooks"
+import db from "@/db/db"
+import type { Conversation } from "@/types/db"
 
 export interface SearchProps {
     query?: string
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    results?: any[]
+    results?: Conversation[]
     loading?: boolean
 }
 
 export function ChatSearch() {
     const { isMobile, open } = useSidebar()
-    const { setChatState, setError } = useChat()
-    const { searchChats, getOrCreateConversation } = useInbox()
-    const [conversationId, setConversationId] = useState<string>("")
+    const { setChatState } = useChat()
 
     const [searchEngine, setSearchEngine] = useState<SearchProps>({
         query: "",
@@ -47,20 +46,9 @@ export function ChatSearch() {
         loading: false,
     })
 
+    const conversations = useLiveQuery(() => db.conversations.toArray())
+
     useEffect(() => {
-        const initConversation = async () => {
-            const persistedConversationId = localStorage.getItem("conversation-id") || undefined
-            const conversation = await getOrCreateConversation(persistedConversationId)
-            if (conversation?.error || !conversation?.id) {
-                setError(conversation?.error || "Failed to initialize conversation")
-                return
-            }
-            localStorage.setItem("conversation-id", conversation.id)
-            setConversationId(conversation.id)
-        }
-
-        initConversation()
-
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.key === "k") {
                 e.preventDefault()
@@ -78,7 +66,6 @@ export function ChatSearch() {
         return () => {
             document.removeEventListener("keydown", handleKeyDown)
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     const handleSearch = useCallback(async (query: string) => {
@@ -90,38 +77,23 @@ export function ChatSearch() {
             }))
             return
         }
-        if (!conversationId) {
-            setSearchEngine((prev) => ({
-                ...prev,
-                results: [],
-                loading: false,
-            }))
-            return
-        }
 
-        const res = await searchChats({
-            query,
-            conversationId,
-        })
-
-        if (res.error) {
-            setError(res.error)
-            return
-        }
+        const res = conversations?.filter((conversation) =>
+            conversation.name.toLowerCase().includes(query.toLowerCase())
+        ) || []
 
         setSearchEngine((prev) => ({
             ...prev,
-            results: res || [],
+            results: res,
             loading: false,
         }))
-    }, [searchChats, conversationId, setError])
+    }, [conversations])
 
     const debouncedSearch = useMemo(() => debounce(async (value: string) => {
         await handleSearch(value);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, 500), [conversationId])
+    }, 500), [handleSearch])
 
-    const handleRedirectAndCloseSearch = (chatId: string) => {
+    const handleRedirectAndCloseSearch = (chatId: number) => {
         const escapeEvent = new KeyboardEvent("keydown", {
             key: "Escape",
             bubbles: true,
@@ -184,7 +156,7 @@ export function ChatSearch() {
                                                     <div
                                                         key={index}
                                                         className="flex items-center justify-between gap-3 p-2 hover:bg-accent rounded cursor-pointer group"
-                                                        onClick={() => handleRedirectAndCloseSearch(result.id)}
+                                                        onClick={() => result.id !== undefined && handleRedirectAndCloseSearch(result.id)}
                                                     >
                                                         <div className="flex items-center justify-between gap-3 p-2">
                                                             <MessageCircle />

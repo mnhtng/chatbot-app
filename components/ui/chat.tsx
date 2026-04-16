@@ -4,12 +4,12 @@ import { createContext, useCallback, useContext, useState } from "react"
 
 interface ChatStateProps {
     state: "creating" | "idle" | "deleting"
-    inbox?: string | null
+    inbox?: number | null
 }
 
 interface ChatContextProps {
     state: "creating" | "idle" | "deleting"
-    inbox?: string | null
+    inbox?: number | null
     setChatState: ({ state, inbox }: ChatStateProps) => Promise<void>
     error: string | null
     setError: (error: string | null) => void

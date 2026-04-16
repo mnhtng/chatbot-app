@@ -1,16 +1,16 @@
 export interface ChatResponseProps {
     prompt: string
-    conversationId?: string | null
-    inboxId?: string | null
+    conversationId?: number | null
     sender: string
 }
+
+import db from "@/db/db"
 
 const useResponse = () => {
     const sendMessage = async ({
         prompt,
         sender,
         conversationId = null,
-        inboxId = null,
     }: ChatResponseProps) => {
         try {
             const response = await fetch("/api/chat/ai", {
@@ -18,7 +18,6 @@ const useResponse = () => {
                 body: JSON.stringify({
                     prompt,
                     conversationId,
-                    inboxId,
                     sender
                 })
             });
@@ -35,7 +34,26 @@ const useResponse = () => {
                 return { error: data.error }
             }
 
-            return { data }
+            if (conversationId === null) {
+                return { error: "Conversation is not initialized." }
+            }
+
+            await db.messages.bulkAdd([
+                {
+                    conversationId,
+                    message: prompt,
+                    sender,
+                    createdAt: new Date(),
+                },
+                {
+                    conversationId,
+                    message: data.message,
+                    sender: "assistant",
+                    createdAt: new Date(),
+                },
+            ])
+
+            return { message: data.message }
         } catch (error) {
             return { error }
         }

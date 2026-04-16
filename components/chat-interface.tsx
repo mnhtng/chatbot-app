@@ -8,10 +8,9 @@ import { useEffect, useRef, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import useResponse from "@/hooks/useResponse";
 import { useChat } from "@/components/ui/chat";
-import useMessage from "@/hooks/useMessage";
 import Image from "next/image";
 import { AutoCloseAlert } from "@/utils/alertUtil";
-import useInbox from "@/hooks/useInbox";
+import useConversation from "@/hooks/useConversation";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -19,105 +18,32 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { LoadingDots } from "@/components/icon/animate";
-
-export interface MessagesConversationProps {
-    id?: string;
-    role: string;
-    content: string;
-}
-
-export interface ConversationProps {
-    messages: MessagesConversationProps[];
-    isLoading: boolean;
-    error: string | null;
-}
+import { useLiveQuery } from "dexie-react-hooks";
+import db from "@/db/db";
 
 const ChatInterface = () => {
-    const { state, inbox, error, message, setChatState, setError, setMessage } = useChat()
+    const { inbox, error, message, setChatState, setError, setMessage } = useChat()
     const { sendMessage } = useResponse()
-    const { getUserMessages } = useMessage()
-    const { createNewChat, getOrCreateConversation } = useInbox()
+    const { createChat } = useConversation()
 
     const messagesEndRef = useRef<HTMLDivElement>(null)
     const inputPromptRef = useRef<HTMLInputElement>(null)
-    const conversationIdRef = useRef<string>("")
     const [inputPrompt, setInputPrompt] = useState<string>("")
-    const [conversation, setConversation] = useState<ConversationProps>({
-        messages: [],
-        isLoading: false,
-        error: null
-    })
+    const [isLoading, setIsLoading] = useState(false)
+    const [conversationError, setConversationError] = useState<string | null>(null)
 
-    useEffect(() => {
-        const initConversation = async () => {
-            const persistedConversationId = localStorage.getItem("conversation-id") || undefined
-            const conversation = await getOrCreateConversation(persistedConversationId)
-            if (conversation?.error || !conversation?.id) {
-                setError(conversation?.error || "Failed to initialize conversation")
-                return
-            }
-            localStorage.setItem("conversation-id", conversation.id)
-            conversationIdRef.current = conversation.id
-        }
+    const listMessage = useLiveQuery(() => {
+        if (!inbox) return []
 
-        initConversation()
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
+        return db.messages
+            .where("conversationId")
+            .equals(Number(inbox))
+            .toArray()
+    }, [inbox])
 
-    const fetchMessages = async (inboxId: string | null = null) => {
-        if (!conversationIdRef.current) return
-
-        const listMessage = await getUserMessages({
-            conversationId: conversationIdRef.current,
-            inboxId: inbox || inboxId || ""
-        })
-
-        if (listMessage?.error) {
-            AutoCloseAlert({
-                onStart: () => {
-                    setConversation(prev => ({
-                        ...prev,
-                        error: listMessage.error as string,
-                        isLoading: false
-                    }))
-                },
-                onClose: () => {
-                    setConversation(prev => ({
-                        ...prev,
-                        error: null,
-                        isLoading: false
-                    }))
-                }
-            })
-            return
-        }
-
-        setConversation(prev => ({
-            ...prev,
-            messages: listMessage,
-            isLoading: false,
-            error: null
-        }))
-    }
-
-    const fetchUserMessage = async () => {
-        await fetchMessages()
-    }
-
-    useEffect(() => {
-        if (inbox === "" || inbox === null) {
-            setConversation(prev => ({
-                ...prev,
-                messages: [],
-                isLoading: false,
-                error: null
-            }))
-            return
-        }
-
-        fetchUserMessage()
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [inbox, state])
+    const messages = [...(listMessage ?? [])].sort(
+        (left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime()
+    )
 
     //* Handle form submission
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -128,44 +54,25 @@ const ChatInterface = () => {
 
         if (!input.trim()) return
         setInputPrompt(input)
-
-        setConversation((prev) => ({
-            ...prev,
-            isLoading: true,
-            error: null
-        }))
+        setIsLoading(true)
+        setConversationError(null)
 
         try {
-            setConversation((prev) => ({
-                ...prev,
-                isLoading: true,
-                error: null
-            }))
-
             let newInboxChat;
 
             // Create new chat if inbox is not set
-            if (inbox === "" || inbox === null) {
-                if (!conversationIdRef.current) {
-                    throw new Error("Conversation has not been initialized")
-                }
-                const newChat = await createNewChat(conversationIdRef.current)
+            if (inbox === null) {
+                const newChat = await createChat()
 
                 if (newChat?.error) {
                     AutoCloseAlert({
                         onStart: () => {
-                            setConversation((prev) => ({
-                                ...prev,
-                                error: newChat.error,
-                                isLoading: false
-                            }))
+                            setConversationError(newChat?.error)
+                            setIsLoading(false)
                         },
                         onClose: () => {
-                            setConversation((prev) => ({
-                                ...prev,
-                                error: null,
-                                isLoading: false
-                            }))
+                            setConversationError(null)
+                            setIsLoading(false)
                         }
                     })
                     return
@@ -179,59 +86,46 @@ const ChatInterface = () => {
                 newInboxChat = newChat.id
             }
 
+            const conversationId = newInboxChat ?? inbox
+
+            if (conversationId === null) {
+                throw new Error("Conversation is not initialized")
+            }
+
             const res = await sendMessage({
                 prompt: input,
                 sender: "guest",
-                conversationId: conversationIdRef.current,
-                inboxId: newInboxChat || inbox || "",
+                conversationId,
             })
 
             if (res?.error) {
                 AutoCloseAlert({
                     onStart: () => {
-                        setConversation((prev) => ({
-                            ...prev,
-                            error: res.error as string,
-                            isLoading: false
-                        }))
+                        setConversationError(res.error as string)
+                        setIsLoading(false)
                     },
                     onClose: () => {
-                        setConversation((prev) => ({
-                            ...prev,
-                            error: null,
-                            isLoading: false
-                        }))
+                        setConversationError(null)
+                        setIsLoading(false)
                     }
                 })
                 return
             }
-
-            await fetchMessages(newInboxChat)
         } catch (error) {
             AutoCloseAlert({
                 onStart: () => {
-                    setConversation((prev) => ({
-                        ...prev,
-                        error: error as string,
-                        isLoading: false
-                    }))
+                    setConversationError(error as string)
+                    setIsLoading(false)
                 },
                 onClose: () => {
-                    setConversation((prev) => ({
-                        ...prev,
-                        error: null,
-                        isLoading: false
-                    }))
+                    setConversationError(null)
+                    setIsLoading(false)
                 }
             })
         } finally {
             setInputPrompt("")
-
-            setConversation((prev) => ({
-                ...prev,
-                isLoading: false,
-                error: null
-            }))
+            setIsLoading(false)
+            setConversationError(null)
 
             if (inputPromptRef.current) {
                 inputPromptRef.current.value = ""
@@ -255,30 +149,25 @@ const ChatInterface = () => {
         if (messagesEndRef.current) {
             messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
         }
-    }, [conversation.messages])
+    }, [listMessage, inputPrompt, isLoading])
 
-    // console.log("Chat Props:", {
-    //     "inbox": inbox,
-    //     "message": message,
-    //     "error": error,
-    // });
-    // console.log("Conversation State:", conversation);
     return (
         <>
-            {(conversation.error || (error !== null && error !== "")) && (
+            {(conversationError || (error !== null && error !== "")) && (
                 <Alert variant="destructive" className="fixed top-16 right-0 z-50 w-[90vw] max-w-sm">
                     <AlertCircle className="h-4 w-4" />
 
                     <AlertTitle>Error</AlertTitle>
 
                     <AlertDescription>
-                        {conversation.error || error}
+                        {conversationError || error}
 
                         <Button
                             variant="link"
                             className="absolute top-0 right-2 rounded-sm p-0 opacity-70 hover:opacity-100 focus:outline-none disabled:pointer-events-none data-[state=open]:bg-muted"
                             onClick={() => {
-                                setConversation({ ...conversation, error: null, isLoading: false })
+                                setConversationError(null)
+                                setIsLoading(false)
                                 setError(null)
                                 return true
                             }}
@@ -311,7 +200,7 @@ const ChatInterface = () => {
 
             <div className="flex flex-1 flex-col overflow-auto gap-4 p-4">
                 <div className="mx-auto w-full max-w-2xl space-y-4">
-                    {(conversation.messages.length === 0 && !inputPrompt) ? (
+                    {(messages.length === 0 && !inputPrompt) ? (
                         <div className="flex h-[60vh] items-center justify-center text-slate-500 flex-col gap-4">
                             <p className="text-lg font-medium">Start a conversation with our Assistant</p>
                             <p className="text-sm text-center max-w-md">
@@ -319,54 +208,57 @@ const ChatInterface = () => {
                             </p>
                         </div>
                     ) : (
-                        conversation.messages.map((message) => (
-                            <div
-                                key={message.id}
-                                className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-                            >
-                                <div className={`flex gap-3 max-w-[80%] ${message.role === "user" ? "flex-row-reverse" : ""}`}>
-                                    <Avatar className="h-8 w-8">
-                                        {message.role === "user" ? (
-                                            <>
-                                                <Image
-                                                    src="/avatar/user.png"
-                                                    alt="User Avatar"
-                                                    width={32}
-                                                    height={32}
-                                                    priority
-                                                />
-                                                <AvatarFallback className="text-foreground">US</AvatarFallback>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Image
-                                                    src="/avatar/chatbot.png"
-                                                    alt="Chatbot Avatar"
-                                                    width={32}
-                                                    height={32}
-                                                    priority
-                                                />
-                                                <AvatarFallback className="text-foreground">AI</AvatarFallback>
-                                            </>
-                                        )}
-                                    </Avatar>
+                        messages.map((message) => {
+                            const isAssistant = message.sender === "assistant"
 
-                                    {/* Content */}
-                                    <div
-                                        className={`rounded-lg p-3 ${message.role === "user" ? "bg-primary text-(--revert-color)" : "bg-muted text-foreground"
-                                            }`}
-                                    >
-                                        <div className="whitespace-pre-wrap">
-                                            {message.role === "user" ? (
-                                                <div>{message.content.trim()}</div>
+                            return (
+                                <div
+                                    key={message.id}
+                                    className={`flex ${isAssistant ? "justify-start" : "justify-end"}`}
+                                >
+                                    <div className={`flex gap-3 max-w-[80%] ${isAssistant ? "" : "flex-row-reverse"}`}>
+                                        <Avatar className="h-8 w-8">
+                                            {isAssistant ? (
+                                                <>
+                                                    <Image
+                                                        src="/avatar/chatbot.png"
+                                                        alt="Chatbot Avatar"
+                                                        width={32}
+                                                        height={32}
+                                                        priority
+                                                    />
+                                                    <AvatarFallback className="text-foreground">AI</AvatarFallback>
+                                                </>
                                             ) : (
-                                                <div dangerouslySetInnerHTML={{ __html: message.content.trim() }} />
+                                                <>
+                                                    <Image
+                                                        src="/avatar/user.png"
+                                                        alt="User Avatar"
+                                                        width={32}
+                                                        height={32}
+                                                        priority
+                                                    />
+                                                    <AvatarFallback className="text-foreground">US</AvatarFallback>
+                                                </>
                                             )}
+                                        </Avatar>
+
+                                        <div
+                                            className={`rounded-lg p-3 ${isAssistant ? "bg-muted text-foreground" : "bg-primary text-(--revert-color)"
+                                                }`}
+                                        >
+                                            <div className="whitespace-pre-wrap">
+                                                {isAssistant ? (
+                                                    <div dangerouslySetInnerHTML={{ __html: message.message.trim() }} />
+                                                ) : (
+                                                    <div>{message.message.trim()}</div>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))
+                            )
+                        })
                     )}
 
                     {inputPrompt ? (
@@ -409,7 +301,7 @@ const ChatInterface = () => {
                                 </div>
                             </div>
                         </>
-                    ) : conversation.messages.length > 0 && conversation.isLoading && (
+                    ) : messages.length > 0 && isLoading && (
                         <div className="flex justify-start">
                             <div className="flex gap-3 max-w-[80%]">
                                 <Avatar className="h-8 w-8">
@@ -448,7 +340,7 @@ const ChatInterface = () => {
                                 <DropdownMenuContent align="start">
                                     <DropdownMenuItem
                                         onClick={() => handleQuickChat("Cách học tiếng Anh hiệu quả?")}
-                                        className={`cursor-pointer group ${conversation.isLoading && "select-none pointer-events-none"}`}
+                                        className={`cursor-pointer group ${isLoading && "select-none pointer-events-none"}`}
                                     >
                                         <span className="flex items-center gap-2 group">
                                             <CircleChevronRight className="-ml-6 opacity-0 group-hover:ml-0 group-hover:opacity-100 transition-all duration-200" />
@@ -457,7 +349,7 @@ const ChatInterface = () => {
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                         onClick={() => handleQuickChat("Quản lý thời gian trong công việc?")}
-                                        className={`cursor-pointer group ${conversation.isLoading && "select-none pointer-events-none"}`}
+                                        className={`cursor-pointer group ${isLoading && "select-none pointer-events-none"}`}
                                     >
                                         <span className="flex items-center gap-2 group">
                                             <CircleChevronRight className="-ml-6 opacity-0 group-hover:ml-0 group-hover:opacity-100 transition-all duration-200" />
@@ -466,7 +358,7 @@ const ChatInterface = () => {
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                         onClick={() => handleQuickChat("Cách giảm stress?")}
-                                        className={`cursor-pointer group ${conversation.isLoading && "select-none pointer-events-none"}`}
+                                        className={`cursor-pointer group ${isLoading && "select-none pointer-events-none"}`}
                                     >
                                         <span className="flex items-center gap-2 group">
                                             <CircleChevronRight className="-ml-6 opacity-0 group-hover:ml-0 group-hover:opacity-100 transition-all duration-200" />
@@ -475,7 +367,7 @@ const ChatInterface = () => {
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                         onClick={() => handleQuickChat("Cải thiện kỹ năng giao tiếp?")}
-                                        className={`cursor-pointer group ${conversation.isLoading && "select-none pointer-events-none"}`}
+                                        className={`cursor-pointer group ${isLoading && "select-none pointer-events-none"}`}
                                     >
                                         <span className="flex items-center gap-2 group">
                                             <CircleChevronRight className="-ml-6 opacity-0 group-hover:ml-0 group-hover:opacity-100 transition-all duration-200" />
@@ -493,12 +385,12 @@ const ChatInterface = () => {
                                 name="prompt"
                                 placeholder="Type your message..."
                                 className="flex-1"
-                                disabled={conversation.isLoading}
+                                disabled={isLoading}
                             />
                         </div>
 
                         <div className="flex flex-col justify-end gap-2">
-                            <Button type="submit" disabled={conversation.isLoading}>
+                            <Button type="submit" disabled={isLoading}>
                                 <Send className="h-4 w-4" />
                                 <span className="sr-only">Send</span>
                             </Button>
