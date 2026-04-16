@@ -6,13 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "db:pull": "npx prisma db pull",
-    "db:push": "npx prisma db push",
-    "db:migrate": "npx prisma migrate dev",
-    "db:studio": "npx prisma studio",
-    "db:generate": "npx prisma generate",
-    "db:reset": "npx prisma migrate reset"
+    "lint": "next lint"
   },
   "dependencies": {
     "@llm-ui/code": "^0.13.3",
